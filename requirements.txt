@@ -1,0 +1,11 @@
+pandas
+torch
+transformers
+datasets
+trl
+unsloth
+ctranslate2
+sentencepiece
+accelerate
+tqdm
+vllm

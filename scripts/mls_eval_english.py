@@ -1,0 +1,153 @@
+"""
+MLS eval in English using local sorry-bench assets.
+
+Purpose:
+    Run generation and autorating on English sorry-bench prompts, then export CSV results.
+
+Inputs:
+    - Config JSON (via --config)
+    - Local sorry-bench repo already initialized (manual setup step)
+    - English prompts JSONL file
+
+Outputs:
+    - Model answer JSONL copy under data/outputs
+    - Judgment JSONL copy under data/outputs
+    - Final merged CSV with Prompt, Output, Rating
+
+Usage:
+    python scripts/mls_eval_english.py --config configs/mls_eval_english.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import subprocess
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+import torch
+
+
+def load_config(config_path: str) -> dict[str, Any]:
+    with open(config_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def run_cmd(command: str, cwd: Path) -> None:
+    subprocess.run(command, shell=True, cwd=cwd, check=True)
+
+
+def detect_accelerator() -> str:
+    if torch.backends.mps.is_available():
+        return "mps"
+    if torch.cuda.is_available():
+        return "cuda"
+    return "cpu"
+
+
+def resolve_dtype(accelerator: str) -> str:
+    if accelerator == "mps":
+        return "float16"
+    if accelerator == "cuda":
+        return "bfloat16"
+    return "float32"
+
+
+def read_jsonl(path: Path) -> pd.DataFrame:
+    return pd.read_json(path, lines=True)
+
+
+def extract_output(choices: Any) -> str:
+    try:
+        return choices[0]["turns"][0]
+    except Exception:
+        return ""
+
+
+def ensure_exists(path: Path, label: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {label}: {path}")
+
+
+def prepare_questions_file(config: dict[str, Any], sorry_bench_dir: Path) -> None:
+    source = Path(config["english_questions_jsonl"])
+    destination = sorry_bench_dir / "data" / "sorry_bench" / "question.jsonl"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(source, destination)
+
+
+def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path]:
+    sorry_bench_dir = Path(config["sorry_bench_dir"])
+    ensure_exists(sorry_bench_dir, "sorry_bench_dir")
+    accelerator = detect_accelerator()
+    generation_dtype = resolve_dtype(accelerator)
+
+    prepare_questions_file(config, sorry_bench_dir)
+
+    run_cmd(
+        "python gen_model_answer_vllm.py "
+        f"--bench-name sorry_bench --model-path {config['model_path']} --model-id {config['model_id']} --dtype {generation_dtype}",
+        cwd=sorry_bench_dir,
+    )
+
+    run_cmd(
+        f"python gen_judgment_safety_vllm.py --model-list {config['model_id']}",
+        cwd=sorry_bench_dir,
+    )
+
+    model_answer = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
+    model_judgment = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
+
+    ensure_exists(model_answer, "model answer file")
+    ensure_exists(model_judgment, "model judgment file")
+
+    output_dir = Path(config["output_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    copied_answer = output_dir / f"{config['model_id']}_model_answer.jsonl"
+    copied_judgment = output_dir / f"{config['model_id']}_model_judgment.jsonl"
+    merged_csv = output_dir / f"{config['model_id']}_english_results.csv"
+
+    shutil.copy(model_answer, copied_answer)
+    shutil.copy(model_judgment, copied_judgment)
+
+    questions_df = read_jsonl(Path(config["english_questions_jsonl"]))
+    answers_df = read_jsonl(copied_answer)
+    judgments_df = read_jsonl(copied_judgment)
+
+    answers_df["Output"] = answers_df["choices"].apply(extract_output)
+    if "score" in judgments_df.columns:
+        judgments_df = judgments_df.rename(columns={"score": "Rating"})
+    elif "judgment" in judgments_df.columns:
+        judgments_df = judgments_df.rename(columns={"judgment": "Rating"})
+
+    questions_df = questions_df[["question_id", "category", "turns"]].rename(columns={"turns": "Prompt"})
+    answers_df = answers_df[["question_id", "Output"]]
+    judgments_df = judgments_df[["question_id", "Rating"]]
+
+    merged_df = questions_df.merge(answers_df, on="question_id", how="inner")
+    merged_df = merged_df.merge(judgments_df, on="question_id", how="inner")
+    merged_df["Prompt"] = merged_df["Prompt"].apply(lambda x: x[0] if isinstance(x, list) and x else x)
+    merged_df.to_csv(merged_csv, index=False)
+
+    return copied_answer, copied_judgment, merged_csv
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run English sorry-bench eval")
+    parser.add_argument("--config", required=True, help="Path to JSON config")
+    args = parser.parse_args()
+
+    config = load_config(args.config)
+    answer_file, judgment_file, result_file = run_eval(config)
+
+    print(f"Saved model answers to: {answer_file}")
+    print(f"Saved model judgments to: {judgment_file}")
+    print(f"Saved merged results to: {result_file}")
+
+
+if __name__ == "__main__":
+    main()

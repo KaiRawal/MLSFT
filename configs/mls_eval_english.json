@@ -1,0 +1,7 @@
+{
+  "model_path": "data/outputs/fine_tuning/qwen3-0.6B-HI-SynthDolly-3A/model_merged",
+  "model_id": "qwen3-0.6B-HI-SynthDolly-3A",
+  "sorry_bench_dir": "external/sorry-bench",
+  "english_questions_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
+  "output_dir": "data/outputs/eval_english"
+}
