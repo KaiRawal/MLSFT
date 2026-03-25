@@ -25,12 +25,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from unsloth import FastModel
+from unsloth.chat_templates import get_chat_template
 import pandas as pd
 import torch
 from datasets import Dataset
 from trl import SFTConfig, SFTTrainer
-from unsloth import FastModel
-from unsloth.chat_templates import get_chat_template
 
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -152,32 +152,36 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     tokenizer = get_chat_template(tokenizer, chat_template=template_name)
     dataset = apply_template(dataset, tokenizer)
 
-    trainer = SFTTrainer(
-        model=model,
-        tokenizer=tokenizer,
-        train_dataset=dataset,
-        eval_dataset=None,
-        args=SFTConfig(
-            dataset_text_field="text",
-            per_device_train_batch_size=int(config.get("per_device_train_batch_size", 2)),
-            gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
-            warmup_steps=int(config.get("warmup_steps", 5)),
-            num_train_epochs=int(config.get("num_train_epochs", 1)),
-            learning_rate=float(config.get("learning_rate", 5e-5)),
-            logging_steps=int(config.get("logging_steps", 1)),
-            optim=config.get("optim", "adamw_8bit"),
-            weight_decay=float(config.get("weight_decay", 0.01)),
-            lr_scheduler_type=config.get("lr_scheduler_type", "linear"),
-            seed=int(config["random_seed"]),
-            output_dir=str(output_dir),
-            report_to="none",
-            fp16=fp16,
-            bf16=bf16,
-            max_grad_norm=float(config.get("max_grad_norm", 1.0)),
-            dataloader_num_workers=int(config.get("dataloader_num_workers", 2)),
-            group_by_length=bool(config.get("group_by_length", True)),
-        ),
+    sft_args = SFTConfig(
+        dataset_text_field="text",
+        per_device_train_batch_size=int(config.get("per_device_train_batch_size", 2)),
+        gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
+        warmup_steps=int(config.get("warmup_steps", 5)),
+        num_train_epochs=int(config.get("num_train_epochs", 1)),
+        learning_rate=float(config.get("learning_rate", 5e-5)),
+        logging_steps=int(config.get("logging_steps", 1)),
+        optim=config.get("optim", "adamw_8bit"),
+        weight_decay=float(config.get("weight_decay", 0.01)),
+        lr_scheduler_type=config.get("lr_scheduler_type", "linear"),
+        seed=int(config["random_seed"]),
+        output_dir=str(output_dir),
+        report_to="none",
+        fp16=fp16,
+        bf16=bf16,
+        max_grad_norm=float(config.get("max_grad_norm", 1.0)),
+        dataloader_num_workers=int(config.get("dataloader_num_workers", 2)),
+        group_by_length=bool(config.get("group_by_length", True)),
     )
+
+    trainer_kwargs: dict[str, Any] = {
+        "model": model,
+        "train_dataset": dataset,
+        "eval_dataset": None,
+        "args": sft_args,
+        "processing_class": tokenizer,
+    }
+
+    trainer = SFTTrainer(**trainer_kwargs)
 
     runtime_stats = trainer.train()
 
