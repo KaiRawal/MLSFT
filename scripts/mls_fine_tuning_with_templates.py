@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -223,11 +224,17 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
 
     if bool(config.get("push_to_hub", False)):
         hf_repo = config.get("hf_repo")
-        hf_token = config.get("hf_token")
-        if not hf_repo or not hf_token:
-            raise ValueError("push_to_hub=true requires hf_repo and hf_token in config")
+        hf_user = (os.environ.get("HF_USER") or "").strip()
+        hf_token = config.get("hf_token") or os.environ.get("HF_TOKEN")
+        if not hf_repo or not hf_user or not hf_token:
+            raise ValueError(
+                "push_to_hub=true requires hf_repo in config, HF_USER and HF_TOKEN in env "
+                "(or hf_token in config)"
+            )
+
+        full_repo_id = hf_repo if "/" in hf_repo else f"{hf_user}/{hf_repo}"
         model.push_to_hub_merged(
-            hf_repo,
+            full_repo_id,
             tokenizer,
             save_method=config.get("save_method", "merged_16bit"),
             token=hf_token,

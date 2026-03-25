@@ -1,5 +1,5 @@
 {
-  "model_path": "data/outputs/fine_tuning/qwen3-0.6B-HI-SynthDolly-3A/model_merged",
+  "model_path": "qwen3-0.6B-HI-SynthDolly-3A",
   "model_id": "qwen3-0.6B-HI-SynthDolly-3A",
   "language_code": "HI",
   "source_lang_code": "hin_Deva",

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -40,8 +42,27 @@ def _format_fix(command: str) -> str:
 	return f"How to fix: {command}"
 
 
+def _is_valid_hf_user(value: str) -> bool:
+	# Accept common Hugging Face user/org namespace patterns.
+	return bool(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,95}", value))
+
+
 def main() -> int:
 	errors: list[str] = []
+
+	hf_user = (os.environ.get("HF_USER") or "").strip()
+	if not hf_user:
+		errors.append(
+			"Missing required environment variable: HF_USER\n"
+			+ _format_fix("export HF_USER='<your_hf_username_or_org>'")
+		)
+	elif not _is_valid_hf_user(hf_user):
+		errors.append(
+			f"Invalid HF_USER value: '{hf_user}'\n"
+			+ _format_fix(
+				"Use a valid Hugging Face user/org namespace (letters, numbers, '_' or '-', max 96 chars)"
+			)
+		)
 
 	config_paths = {
 		"fine_tuning": ROOT / "configs" / "mls_fine_tuning_with_templates.json",

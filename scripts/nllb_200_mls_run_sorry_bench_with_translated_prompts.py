@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -95,6 +96,27 @@ def ensure_exists(path: Path, label: str) -> None:
         raise FileNotFoundError(f"Missing {label}: {path}")
 
 
+def resolve_model_path(config: dict[str, Any]) -> str:
+    configured = str(config.get("model_path", "")).strip()
+    hf_user = (os.environ.get("HF_USER") or "").strip()
+
+    if configured:
+        if Path(configured).exists() or configured.startswith(("/", "./", "../", "data/", "external/")):
+            return configured
+        if "/" in configured:
+            return configured
+        if not hf_user:
+            raise ValueError("HF_USER env var is required when model_path is not namespaced")
+        return f"{hf_user}/{configured}"
+
+    model_id = str(config.get("model_id", "")).strip()
+    if not model_id:
+        raise ValueError("config requires model_id when model_path is empty")
+    if not hf_user:
+        raise ValueError("HF_USER env var is required when resolving model path from model_id")
+    return f"{hf_user}/{model_id}"
+
+
 def to_jsonl_from_prompt_csv(input_csv: Path, output_jsonl: Path) -> None:
     df = pd.read_csv(input_csv)
     if "turns" not in df.columns:
@@ -157,6 +179,7 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     accelerator = detect_accelerator()
     generation_dtype = resolve_dtype(accelerator)
+    model_path = resolve_model_path(config)
 
     ensure_exists(sorry_bench_dir, "sorry_bench_dir")
     ensure_exists(nllb_ct2_dir, "nllb_ct2_dir")
@@ -169,7 +192,7 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
 
     run_cmd(
         "python gen_model_answer_vllm.py "
-        f"--bench-name sorry_bench --model-path {config['model_path']} --model-id {config['model_id']} --dtype {generation_dtype}",
+        f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype}",
         cwd=sorry_bench_dir,
     )
 
