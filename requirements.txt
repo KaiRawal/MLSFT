@@ -10,3 +10,5 @@ accelerate
 tqdm
 vllm
 ctranslate2
+shortuuid
+fschat
