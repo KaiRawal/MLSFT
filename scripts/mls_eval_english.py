@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -101,7 +102,45 @@ def prepare_questions_file(config: dict[str, Any], sorry_bench_dir: Path) -> Non
     shutil.copy(source, destination)
 
 
-def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path]:
+def remove_thinking_tokens(jsonl_path: Path) -> Path:
+    """Remove <think>...</think> tags from JSONL file in place.
+    
+    Creates a backup first, then modifies the original file.
+    Removes all thinking tokens from the 'turns' field in each JSON object.
+    
+    Returns:
+        Path to the backup file.
+    """
+    # Create backup
+    backup_path = jsonl_path.with_stem(f"{jsonl_path.stem}_backup")
+    shutil.copy(jsonl_path, backup_path)
+    print(f"Created backup: {backup_path}")
+    
+    # Read, process, and write back
+    processed_lines = []
+    with open(jsonl_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            data = json.loads(line)
+            if "choices" in data and isinstance(data["choices"], list):
+                for choice in data["choices"]:
+                    if "turns" in choice and isinstance(choice["turns"], list):
+                        choice["turns"] = [
+                            re.sub(r'<think>.*?</think>', '', turn, flags=re.DOTALL).strip()
+                            for turn in choice["turns"]
+                        ]
+            processed_lines.append(json.dumps(data))
+    
+    with open(jsonl_path, "w", encoding="utf-8") as f:
+        for line in processed_lines:
+            f.write(line + "\n")
+    
+    print(f"Removed thinking tokens from: {jsonl_path}")
+    return backup_path
+
+
+def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
     sorry_bench_dir = Path(config["sorry_bench_dir"])
     ensure_exists(sorry_bench_dir, "sorry_bench_dir")
     accelerator = detect_accelerator()
@@ -115,26 +154,29 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path]:
         f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype}",
         cwd=sorry_bench_dir,
     )
+    model_answer = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
+    ensure_exists(model_answer, "model answer file")
+
+    # Remove thinking tokens before judgment generation
+    backup_model_answer = remove_thinking_tokens(model_answer)
 
     run_cmd(
         f"python gen_judgment_safety_vllm.py --model-list {config['model_id']}",
         cwd=sorry_bench_dir,
     )
-
-    model_answer = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
     model_judgment = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
-
-    ensure_exists(model_answer, "model answer file")
     ensure_exists(model_judgment, "model judgment file")
 
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
     copied_answer = output_dir / f"{config['model_id']}_model_answer.jsonl"
+    copied_backup = output_dir / f"{config['model_id']}_model_answer_backup.jsonl"
     copied_judgment = output_dir / f"{config['model_id']}_model_judgment.jsonl"
     merged_csv = output_dir / f"{config['model_id']}_english_results.csv"
 
     shutil.copy(model_answer, copied_answer)
+    shutil.copy(backup_model_answer, copied_backup)
     shutil.copy(model_judgment, copied_judgment)
 
     questions_df = read_jsonl(Path(config["english_questions_jsonl"]))
@@ -156,7 +198,7 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path]:
     merged_df["Prompt"] = merged_df["Prompt"].apply(lambda x: x[0] if isinstance(x, list) and x else x)
     merged_df.to_csv(merged_csv, index=False)
 
-    return copied_answer, copied_judgment, merged_csv
+    return copied_answer, copied_backup, copied_judgment, merged_csv
 
 
 def main() -> None:
@@ -165,9 +207,10 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config(args.config)
-    answer_file, judgment_file, result_file = run_eval(config)
+    answer_file, backup_file, judgment_file, result_file = run_eval(config)
 
     print(f"Saved model answers to: {answer_file}")
+    print(f"Saved model answers backup to: {backup_file}")
     print(f"Saved model judgments to: {judgment_file}")
     print(f"Saved merged results to: {result_file}")
 

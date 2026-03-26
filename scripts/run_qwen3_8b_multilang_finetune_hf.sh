@@ -52,6 +52,7 @@ JSON
 }
 
 LANGUAGE_RUNS=(
+  "Hindi|HI"
   "Danish|DA"
   "Chinese|ZH"
   "Greek|EL"
@@ -59,14 +60,25 @@ LANGUAGE_RUNS=(
   "Portuguese|PT"
   "Spanish|ES"
   "Tagalog|TL"
-  "Hindi|HI"
 )
 
-echo "\n\n\nRunning ${#LANGUAGE_RUNS[@]} fine-tuning calls for Qwen/Qwen3-8B\n\n\n\n"
+echo ""
+echo ""
+echo ""
+echo "Running ${#LANGUAGE_RUNS[@]} fine-tuning calls for Qwen/Qwen3-8B"
+echo ""
+echo ""
+echo ""
 
 for run in "${LANGUAGE_RUNS[@]}"; do
   IFS='|' read -r language lang_code <<< "${run}"
   run_finetune "${language}" "${lang_code}"
 done
 
+echo ""
+echo ""
+echo ""
 echo "Completed ${#LANGUAGE_RUNS[@]} fine-tuning calls."
+echo ""
+echo ""
+echo ""
