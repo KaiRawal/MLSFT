@@ -1,6 +1,6 @@
 {
   "language": "Hindi",
-  "model_name": "google/gemma-3-12b-it",
+  "model_name": "unsloth/gemma-3-12b-it",
   "model_id": "Gemma-3-12B-IT-HI-SynthDolly-TEST",
   "random_seed": 3407,
   "template_name": "gemma-3",
