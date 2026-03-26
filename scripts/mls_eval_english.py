@@ -100,6 +100,26 @@ def ensure_exists(path: Path, label: str) -> None:
         raise FileNotFoundError(f"Missing {label}: {path}")
 
 
+def overwrite_loud(path: Path, label: str) -> None:
+    if path.exists():
+        print(f"Overwriting existing {label}: {path}")
+        path.unlink()
+
+
+def copy_overwrite_loud(source: Path, destination: Path, label: str) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        print(f"Overwriting existing {label}: {destination}")
+    shutil.copy(source, destination)
+
+
+def write_csv_overwrite_loud(df: pd.DataFrame, destination: Path, label: str) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        print(f"Overwriting existing {label}: {destination}")
+    df.to_csv(destination, index=False)
+
+
 def resolve_model_path(config: dict[str, Any]) -> str:
     configured = str(config.get("model_path", "")).strip()
     hf_user = (os.environ.get("HF_USER") or "").strip()
@@ -124,8 +144,7 @@ def resolve_model_path(config: dict[str, Any]) -> str:
 def prepare_questions_file(config: dict[str, Any], sorry_bench_dir: Path) -> None:
     source = Path(config["english_questions_jsonl"])
     destination = sorry_bench_dir / "data" / "sorry_bench" / "question.jsonl"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(source, destination)
+    copy_overwrite_loud(source, destination, "sorry-bench question file")
 
 
 def remove_thinking_tokens(jsonl_path: Path) -> Path:
@@ -139,7 +158,7 @@ def remove_thinking_tokens(jsonl_path: Path) -> Path:
     """
     # Create backup
     backup_path = jsonl_path.with_stem(f"{jsonl_path.stem}_backup")
-    shutil.copy(jsonl_path, backup_path)
+    copy_overwrite_loud(jsonl_path, backup_path, "model answer backup before think-tag stripping")
     print(f"Created backup: {backup_path}")
     
     # Read, process, and write back
@@ -172,12 +191,17 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
 
     prepare_questions_file(config, sorry_bench_dir)
 
+    model_answer = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
+    model_judgment = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
+    # Sorry-bench generation/judgment scripts append by default; clear per-run artifacts to force fresh eval.
+    overwrite_loud(model_answer, "sorry-bench model answer cache")
+    overwrite_loud(model_judgment, "sorry-bench model judgment cache")
+
     run_cmd(
         "python gen_model_answer_vllm.py "
         f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype}",
         cwd=sorry_bench_dir,
     )
-    model_answer = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
     ensure_exists(model_answer, "model answer file")
 
     # Remove thinking tokens before judgment generation
@@ -187,7 +211,6 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
         f"python gen_judgment_safety_vllm.py --model-list {config['model_id']}",
         cwd=sorry_bench_dir,
     )
-    model_judgment = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
     ensure_exists(model_judgment, "model judgment file")
 
     output_dir = Path(config["output_dir"])
@@ -206,9 +229,9 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     merged_csv = output_dir / f"{config['model_id']}_english_results.csv"
     detailed_csv = output_dir / f"{config['model_id']}_english_results_detailed.csv"
 
-    shutil.copy(model_answer, copied_answer)
-    shutil.copy(backup_model_answer, copied_backup)
-    shutil.copy(model_judgment, copied_judgment)
+    copy_overwrite_loud(model_answer, copied_answer, "output stripped model answer")
+    copy_overwrite_loud(backup_model_answer, copied_backup, "output raw model answer backup")
+    copy_overwrite_loud(model_judgment, copied_judgment, "output model judgment")
 
     questions_df = read_jsonl(Path(config["english_questions_jsonl"]))
     answers_df = read_jsonl(copied_answer)
@@ -229,7 +252,7 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     merged_df = questions_df.merge(answers_df, on="question_id", how="inner")
     merged_df = merged_df.merge(judgments_df, on="question_id", how="inner")
     merged_df["Prompt"] = merged_df["Prompt"].apply(lambda x: x[0] if isinstance(x, list) and x else x)
-    merged_df.to_csv(merged_csv, index=False)
+    write_csv_overwrite_loud(merged_df, merged_csv, "merged English eval CSV")
 
     detailed_questions_df = questions_df[["question_id", "Prompt"]].copy()
     detailed_questions_df["Prompt"] = detailed_questions_df["Prompt"].apply(
@@ -244,7 +267,7 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     detailed_df = detailed_df.merge(detailed_judgments_df, on="question_id", how="inner")
     detailed_df = detailed_df.rename(columns={"Prompt": "prompt"})
     detailed_df = detailed_df[["prompt", "model_output_raw", "model_output_stripped", "judgement"]]
-    detailed_df.to_csv(detailed_csv, index=False)
+    write_csv_overwrite_loud(detailed_df, detailed_csv, "detailed English eval CSV")
 
     return copied_answer, copied_backup, copied_judgment, merged_csv, detailed_csv
 

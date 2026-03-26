@@ -96,6 +96,26 @@ def ensure_exists(path: Path, label: str) -> None:
         raise FileNotFoundError(f"Missing {label}: {path}")
 
 
+def overwrite_loud(path: Path, label: str) -> None:
+    if path.exists():
+        print(f"Overwriting existing {label}: {path}")
+        path.unlink()
+
+
+def copy_overwrite_loud(source: Path, destination: Path, label: str) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        print(f"Overwriting existing {label}: {destination}")
+    shutil.copy(source, destination)
+
+
+def write_csv_overwrite_loud(df: pd.DataFrame, destination: Path, label: str) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        print(f"Overwriting existing {label}: {destination}")
+    df.to_csv(destination, index=False)
+
+
 def resolve_model_path(config: dict[str, Any]) -> str:
     configured = str(config.get("model_path", "")).strip()
     hf_user = (os.environ.get("HF_USER") or "").strip()
@@ -123,6 +143,8 @@ def to_jsonl_from_prompt_csv(input_csv: Path, output_jsonl: Path) -> None:
         raise ValueError(f"Expected turns column in {input_csv}")
     df["turns"] = df["turns"].apply(lambda x: [x] if isinstance(x, str) else x)
     output_jsonl.parent.mkdir(parents=True, exist_ok=True)
+    if output_jsonl.exists():
+        print(f"Overwriting existing local question JSONL: {output_jsonl}")
     df.to_json(output_jsonl, orient="records", lines=True, force_ascii=False)
 
 
@@ -137,6 +159,9 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def save_jsonl(path: Path, items: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        print(f"Overwriting existing JSONL: {path}")
     with open(path, "w", encoding="utf-8") as f:
         for item in items:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
@@ -230,7 +255,22 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     english_question_jsonl = sorry_bench_dir / "data" / "sorry_bench" / "question_en.jsonl"
 
     to_jsonl_from_prompt_csv(Path(config["local_prompt_csv"]), local_question_jsonl)
-    shutil.copy(Path(config["english_prompt_jsonl"]), english_question_jsonl)
+    copy_overwrite_loud(Path(config["english_prompt_jsonl"]), english_question_jsonl, "English question JSONL")
+
+    answer_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
+    stripped_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_stripped.jsonl"
+    translated_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_translated.jsonl"
+    autorater_generic = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
+    autorater_target = (
+        sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / f"{config['model_id']}_ft-mistral-7b-instruct-v0.2.jsonl"
+    )
+
+    # Sorry-bench generation/judgment scripts append by default; clear per-run artifacts to force fresh eval.
+    overwrite_loud(answer_path, "sorry-bench model answer cache")
+    overwrite_loud(stripped_path, "sorry-bench stripped model answer cache")
+    overwrite_loud(translated_path, "sorry-bench translated model answer cache")
+    overwrite_loud(autorater_generic, "sorry-bench model judgment cache")
+    overwrite_loud(autorater_target, "sorry-bench translated model judgment cache")
 
     run_cmd(
         "python gen_model_answer_vllm.py "
@@ -238,7 +278,6 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
         cwd=sorry_bench_dir,
     )
 
-    answer_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
     ensure_exists(answer_path, "model answer jsonl")
 
     backup_answer_path = answer_path.with_stem(f"{answer_path.stem}_backup")
@@ -256,7 +295,6 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
         stripped_answers.append(stripped_item)
         source_texts.append(cleaned_text)
 
-    stripped_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_stripped.jsonl"
     save_jsonl(stripped_path, stripped_answers)
 
     translator_device = resolve_requested_ct2_device(config.get("translate_device"), accelerator)
@@ -272,7 +310,6 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
         batch_size=int(config.get("translation_batch_size", 32)),
     )
 
-    translated_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_translated.jsonl"
     translated_rows: list[dict[str, Any]] = []
     for i, item in enumerate(stripped_answers):
         translated_item = copy.deepcopy(item)
@@ -292,12 +329,9 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     elif torch.backends.mps.is_available() and hasattr(torch, "mps"):
         torch.mps.empty_cache()
 
-    autorater_generic = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
-    autorater_target = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / f"{config['model_id']}_ft-mistral-7b-instruct-v0.2.jsonl"
-
     backup_local = local_question_jsonl.with_suffix(".backup.jsonl")
     shutil.move(local_question_jsonl, backup_local)
-    shutil.copy(english_question_jsonl, local_question_jsonl)
+    copy_overwrite_loud(english_question_jsonl, local_question_jsonl, "temporary English question JSONL swap")
 
     try:
         run_cmd(
@@ -309,8 +343,7 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
         shutil.move(backup_local, local_question_jsonl)
 
     ensure_exists(autorater_generic, "autorater generic output")
-    if autorater_target.exists():
-        autorater_target.unlink()
+    overwrite_loud(autorater_target, "translated autorater output")
     shutil.move(autorater_generic, autorater_target)
 
     questions = load_jsonl(english_question_jsonl)
@@ -337,11 +370,11 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     merged_csv = output_dir / f"{config['model_id']}_{config['language_code']}_translated_eval.csv"
     detailed_csv = output_dir / f"{config['model_id']}_{config['language_code']}_translated_eval_detailed.csv"
 
-    shutil.copy(backup_answer_path, backup_copy)
-    shutil.copy(stripped_path, stripped_copy)
-    shutil.copy(translated_path, translated_copy)
-    shutil.copy(autorater_target, judgment_copy)
-    pd.DataFrame(merged).to_csv(merged_csv, index=False)
+    copy_overwrite_loud(backup_answer_path, backup_copy, "output raw model answer backup")
+    copy_overwrite_loud(stripped_path, stripped_copy, "output stripped local answers")
+    copy_overwrite_loud(translated_path, translated_copy, "output translated answers")
+    copy_overwrite_loud(autorater_target, judgment_copy, "output translated judgments")
+    write_csv_overwrite_loud(pd.DataFrame(merged), merged_csv, "merged translated eval CSV")
 
     english_questions_df = pd.DataFrame(load_jsonl(english_question_jsonl))
     local_questions_df = pd.DataFrame(load_jsonl(local_question_jsonl))
@@ -389,7 +422,7 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
             "judgement",
         ]
     ]
-    detailed_df.to_csv(detailed_csv, index=False)
+    write_csv_overwrite_loud(detailed_df, detailed_csv, "detailed translated eval CSV")
 
     return backup_copy, stripped_copy, translated_copy, judgment_copy, merged_csv, detailed_csv
 

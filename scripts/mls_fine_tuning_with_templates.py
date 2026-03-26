@@ -26,6 +26,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from huggingface_hub import HfApi
+from huggingface_hub.utils import HfHubHTTPError
 from unsloth import FastModel
 from unsloth.chat_templates import get_chat_template
 import pandas as pd
@@ -109,6 +111,43 @@ def apply_template(dataset: Dataset, tokenizer: Any) -> Dataset:
     return dataset.map(format_row)
 
 
+def resolve_hf_push_target(config: dict[str, Any]) -> tuple[str, str, str]:
+    hf_repo = config.get("hf_repo")
+    hf_user = (os.environ.get("HF_USER") or "").strip()
+    hf_token = (config.get("hf_token") or os.environ.get("HF_TOKEN") or "").strip()
+    if not hf_repo or not hf_user or not hf_token:
+        raise ValueError(
+            "push_to_hub=true requires hf_repo in config, HF_USER and HF_TOKEN in env "
+            "(or hf_token in config)"
+        )
+
+    full_repo_id = hf_repo if "/" in hf_repo else f"{hf_user}/{hf_repo}"
+    return hf_repo, full_repo_id, hf_token
+
+
+def enforce_existing_repo_policy(full_repo_id: str, hf_token: str, allow_existing_hf_repo: bool) -> None:
+    api = HfApi()
+    try:
+        api.model_info(repo_id=full_repo_id, token=hf_token)
+        repo_exists = True
+    except HfHubHTTPError as exc:
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        if status_code == 404:
+            repo_exists = False
+        else:
+            raise RuntimeError(
+                f"Unable to validate Hugging Face repo status for '{full_repo_id}' (HTTP {status_code})."
+            ) from exc
+    except Exception as exc:
+        raise RuntimeError(f"Unable to validate Hugging Face repo status for '{full_repo_id}'.") from exc
+
+    if repo_exists and not allow_existing_hf_repo:
+        raise ValueError(
+            "Target Hugging Face repo already exists: "
+            f"{full_repo_id}. Set allow_existing_hf_repo=true to permit re-training and overwriting."
+        )
+
+
 def run_training(config: dict[str, Any]) -> dict[str, Any]:
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -116,6 +155,17 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     local_model_dir.mkdir(parents=True, exist_ok=True)
     accelerator = detect_accelerator()
     fp16, bf16 = precision_flags(config, accelerator)
+
+    push_to_hub = bool(config.get("push_to_hub", False))
+    full_repo_id = ""
+    hf_token = ""
+    if push_to_hub:
+        _, full_repo_id, hf_token = resolve_hf_push_target(config)
+        enforce_existing_repo_policy(
+            full_repo_id=full_repo_id,
+            hf_token=hf_token,
+            allow_existing_hf_repo=bool(config.get("allow_existing_hf_repo", False)),
+        )
 
     model, tokenizer = FastModel.from_pretrained(
         model_name=config["model_name"],
@@ -222,17 +272,7 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         "local_model_dir": str(local_model_dir),
     }
 
-    if bool(config.get("push_to_hub", False)):
-        hf_repo = config.get("hf_repo")
-        hf_user = (os.environ.get("HF_USER") or "").strip()
-        hf_token = config.get("hf_token") or os.environ.get("HF_TOKEN")
-        if not hf_repo or not hf_user or not hf_token:
-            raise ValueError(
-                "push_to_hub=true requires hf_repo in config, HF_USER and HF_TOKEN in env "
-                "(or hf_token in config)"
-            )
-
-        full_repo_id = hf_repo if "/" in hf_repo else f"{hf_user}/{hf_repo}"
+    if push_to_hub:
         model.push_to_hub_merged(
             full_repo_id,
             tokenizer,

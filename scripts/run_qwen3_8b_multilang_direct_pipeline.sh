@@ -100,6 +100,7 @@ JSON
   "per_device_train_batch_size": 2,
   "gradient_accumulation_steps": 4,
   "push_to_hub": true,
+  "allow_existing_hf_repo": false,
   "hf_repo": "${repo_name}"
 }
 JSON
@@ -138,6 +139,7 @@ JSON
 }
 
 LANGUAGE_RUNS=(
+  "Hindi|HI|hin_Deva"
   "Danish|DA|dan_Latn"
   "Chinese|ZH|zho_Hans"
   "Greek|EL|ell_Grek"
@@ -145,7 +147,6 @@ LANGUAGE_RUNS=(
   "Portuguese|PT|por_Latn"
   "Spanish|ES|spa_Latn"
   "Tagalog|TL|tgl_Latn"
-  "Hindi|HI|hin_Deva"
 )
 
 for run in "${LANGUAGE_RUNS[@]}"; do

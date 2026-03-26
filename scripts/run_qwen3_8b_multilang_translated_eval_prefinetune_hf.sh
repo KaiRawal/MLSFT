@@ -56,6 +56,7 @@ JSON
 }
 
 LANGUAGE_RUNS=(
+  "Hindi|HI|hin_Deva"
   "Danish|DA|dan_Latn"
   "Chinese|ZH|zho_Hans"
   "Greek|EL|ell_Grek"
@@ -63,7 +64,6 @@ LANGUAGE_RUNS=(
   "Portuguese|PT|por_Latn"
   "Spanish|ES|spa_Latn"
   "Tagalog|TL|tgl_Latn"
-  "Hindi|HI|hin_Deva"
 )
 
 echo ""
