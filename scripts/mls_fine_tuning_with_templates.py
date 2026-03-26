@@ -82,7 +82,7 @@ def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, boo
     return fp16, bf16
 
 
-def build_dataset(input_csv: Path, template_name: str) -> tuple[Dataset, Any]:
+def build_dataset(input_csv: Path, template_name: str, tokenizer: Any) -> tuple[Dataset, Any]:
     df = pd.read_csv(input_csv)
     validate_columns(df)
     df["instruction"] = df["instruction"].astype(str)
@@ -91,28 +91,30 @@ def build_dataset(input_csv: Path, template_name: str) -> tuple[Dataset, Any]:
 
     dataset = Dataset.from_pandas(df)
 
-    return dataset, template_name
-
-
-def apply_template(dataset: Dataset, tokenizer: Any) -> Dataset:
-    def format_row(example: dict[str, Any]) -> dict[str, str]:
+    def format_to_messages(example: dict[str, Any]) -> dict[str, Any]:
         user_content = example["instruction"]
-        if example.get("input") and str(example["input"]).lower() != "nan":
-            user_content += "\n\n" + str(example["input"])
+        if example["input"] and str(example["input"]).lower() != "nan":
+            user_content += "\n\n" + example["input"]
 
         messages = [
             {"role": "user", "content": user_content},
-            {"role": "assistant", "content": str(example["response"])},
+            {"role": "assistant", "content": example["response"]},
         ]
 
+        # Apply chat template to create formatted text for reference/logging
         text = tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=False,
         )
-        return {"text": text}
 
-    return dataset.map(format_row)
+        return {"messages": messages, "text": text}
+
+    dataset = dataset.map(format_to_messages)
+    return dataset, template_name
+
+
+
 
 
 def resolve_hf_push_target(config: dict[str, Any]) -> tuple[str, str, str]:
@@ -203,12 +205,10 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         loftq_config=None,
     )
 
-    dataset, template_name = build_dataset(Path(config["input_csv"]), config["template_name"])
-    tokenizer = get_chat_template(tokenizer, chat_template=template_name)
-    dataset = apply_template(dataset, tokenizer)
+    tokenizer = get_chat_template(tokenizer, chat_template=config["template_name"])
+    dataset, template_name = build_dataset(Path(config["input_csv"]), config["template_name"], tokenizer)
 
     sft_args = SFTConfig(
-        dataset_text_field="text",
         per_device_train_batch_size=int(config.get("per_device_train_batch_size", 2)),
         gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
         warmup_steps=int(config.get("warmup_steps", 5)),
