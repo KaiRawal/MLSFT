@@ -201,7 +201,8 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
 
     run_cmd(
         "python gen_model_answer_vllm.py "
-        f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype}",
+        f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype} "
+        "--num-gpus-per-model 2 --num-gpus-total 2",
         cwd=sorry_bench_dir,
     )
     ensure_exists(model_answer, "model answer file")
