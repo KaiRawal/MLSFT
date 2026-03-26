@@ -82,12 +82,7 @@ def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, boo
     return fp16, bf16
 
 
-def build_dataset(
-    input_csv: Path,
-    template_name: str,
-    tokenizer: Any,
-    max_seq_length: int = 2048,
-) -> tuple[Dataset, Any]:
+def build_dataset(input_csv: Path, template_name: str, tokenizer: Any) -> tuple[Dataset, Any]:
     df = pd.read_csv(input_csv)
     validate_columns(df)
     df["instruction"] = df["instruction"].astype(str)
@@ -106,49 +101,21 @@ def build_dataset(
             {"role": "assistant", "content": example["response"]},
         ]
 
-        # Apply chat template to produce the formatted string.
+        # Apply chat template and return only the formatted text string.
+        # Returning only "text" (not "messages") is critical: if a "messages"
+        # column (list of dicts) is present in the dataset, the HF data collator
+        # will try to tensorise it and crash with "Could not infer dtype of dict".
+        # Unsloth patches this away for text-only models but not for multimodal
+        # Processors (e.g. Gemma-3's Gemma3Processor), so we avoid the column
+        # entirely to stay compatible across all model families.
         text = tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=False,
         )
-
-        return {"messages": messages, "text": text}
+        return {"text": text}
 
     dataset = dataset.map(format_to_messages)
-
-    # Pre-tokenize to add `input_ids` / `attention_mask` to the dataset.
-    #
-    # This is required for cross-model-family compatibility.  For text-only
-    # models (Qwen, Llama, …) unsloth patches SFTTrainer so it tokenises the
-    # dataset before the sampler is constructed.  For multimodal models
-    # (Gemma-3, …) the processing_class is a full Processor rather than a bare
-    # tokeniser, and that early-tokenisation path is never taken — leaving the
-    # dataset without `input_ids` when LengthGroupedSampler is built, which
-    # raises:
-    #   ValueError: Can only automatically infer lengths for datasets whose
-    #               items are dictionaries with an 'input_ids' key.
-    #
-    # By pre-tokenising here with the underlying text tokeniser we always have
-    # `input_ids` present, regardless of model family or whether group_by_length
-    # is enabled.  SFTTrainer will skip its own tokenisation step when it finds
-    # `input_ids` already in the dataset (dataset_text_field must NOT be set in
-    # SFTConfig when taking this path — otherwise it double-tokenises).
-    #
-    # For multimodal Processors (e.g. Gemma3Processor) we extract the inner
-    # text tokeniser via `getattr(tokenizer, "tokenizer", tokenizer)` so that
-    # we produce proper token ids without triggering image-processing logic.
-    text_tokenizer = getattr(tokenizer, "tokenizer", tokenizer)
-
-    def tokenize_fn(examples: dict[str, Any]) -> dict[str, Any]:
-        return text_tokenizer(
-            examples["text"],
-            truncation=True,
-            max_length=max_seq_length,
-            padding=False,
-        )
-
-    dataset = dataset.map(tokenize_fn, batched=True)
     return dataset, template_name
 
 
@@ -244,17 +211,10 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     )
 
     tokenizer = get_chat_template(tokenizer, chat_template=config["template_name"])
-    dataset, template_name = build_dataset(
-        Path(config["input_csv"]),
-        config["template_name"],
-        tokenizer,
-        max_seq_length=int(config.get("max_seq_length", 2048)),
-    )
+    dataset, template_name = build_dataset(Path(config["input_csv"]), config["template_name"], tokenizer)
 
     sft_args = SFTConfig(
-        # dataset_text_field must NOT be set here because the dataset is already
-        # pre-tokenised (input_ids is present).  Setting it alongside pre-tokenised
-        # data causes SFTTrainer to double-tokenise, producing garbage inputs.
+        dataset_text_field="text",
         per_device_train_batch_size=int(config.get("per_device_train_batch_size", 2)),
         gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
         warmup_steps=int(config.get("warmup_steps", 5)),
@@ -271,10 +231,11 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         bf16=bf16,
         max_grad_norm=float(config.get("max_grad_norm", 1.0)),
         dataloader_num_workers=int(config.get("dataloader_num_workers", 2)),
-        # Default False: safer across model families.  LengthGroupedSampler
-        # requires input_ids to be pre-populated, which lazy-tokenisation
-        # pipelines do not guarantee.  We pre-tokenise in build_dataset so
-        # True is also safe, but False avoids edge cases.
+        # Must be False for Gemma-3 (and any model whose processing_class is a
+        # multimodal Processor rather than a bare tokenizer). LengthGroupedSampler
+        # requires input_ids to be present in the dataset before training begins;
+        # unsloth pre-populates these for text-only models but not for Processor-
+        # based ones, causing a crash. False is the safe default across all families.
         group_by_length=bool(config.get("group_by_length", False)),
     )
 

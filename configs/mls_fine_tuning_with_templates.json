@@ -14,5 +14,6 @@
   "gradient_accumulation_steps": 4,
   "push_to_hub": true,
   "hf_repo": "qwen3-0.6B-HI-SynthDolly-3A",
-  "hf_token": ""
+  "hf_token": "",
+  "allow_existing_hf_repo": true
 }
