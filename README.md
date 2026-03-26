@@ -103,10 +103,10 @@ Legacy sequential run:
 bash scripts/run_pipeline.sh
 ```
 
-Qwen 8B multilingual end-to-end pipeline (recommended):
+Qwen 8B multilingual direct pipeline (recommended):
 
 ```bash
-bash scripts/run_qwen3_8b_multilang_full_pipeline_hf.sh
+bash scripts/run_qwen3_8b_multilang_direct_pipeline.sh
 ```
 
 Individual Qwen 8B entrypoints:
@@ -124,11 +124,25 @@ bash scripts/run_qwen3_8b_multilang_eval_hf.sh
 bash scripts/run_qwen3_8b_multilang_translated_eval_hf.sh
 ```
 
-Optional overrides supported by these Qwen scripts:
+This direct pipeline uses fixed Qwen3-8B model/language settings and runs, per language:
+
+1. pre-finetune English eval
+2. pre-finetune translated eval
+3. fine-tuning (pushes to Hugging Face using HF_USER and HF_TOKEN)
+4. post-finetune English eval (from Hugging Face)
+5. post-finetune translated eval (from Hugging Face)
+
+Expected outputs per language/model pair:
+
+- 4 CSV files total (pre/post English plus pre/post translated)
+- JSONL traces for answer and judgment artifacts in the same output directories
+
+Python script entrypoints used by the direct pipeline:
 
 ```bash
-export BASE_MODEL_PATH="Qwen/Qwen3-8B"
-export MODEL_ID_PATTERN="Qwen3-8B-__LANG_CODE__-SynthDolly-1A"
+python scripts/mls_eval_english.py
+python scripts/mls_fine_tuning_with_templates.py
+python scripts/nllb_200_mls_run_sorry_bench_with_translated_prompts.py
 ```
 
 ## Super Controller
