@@ -1,6 +1,6 @@
 # MLSFT Colab-to-Script Migration
 
-This repository contains script-based replacements for the original Colab notebooks used for multilingual fine-tuning and refusal-rate evaluation.
+This repository contains script-based replacements for the original Colab notebooks used for multilingual fine-tuning and refusal-rate evaluation. Some finetuned models can be found at [https://huggingface.co/kairawal/models](https://huggingface.co/kairawal/models).
 
 ## Manual Environment Setup (Required)
 
