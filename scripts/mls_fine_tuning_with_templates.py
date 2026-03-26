@@ -61,7 +61,7 @@ def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, boo
     if "fp16" in config:
         fp16 = bool(config["fp16"])
     else:
-        fp16 = accelerator == "mps"
+        fp16 = accelerator in {"mps", "cuda"}
 
     if "bf16" in config:
         bf16 = bool(config["bf16"])
@@ -70,6 +70,10 @@ def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, boo
 
     if accelerator == "cpu":
         return False, False
+
+    if accelerator == "cuda" and bf16:
+        # Prefer bf16 on supported CUDA devices.
+        fp16 = False
 
     if fp16 and bf16:
         # Avoid an invalid mixed-precision config.

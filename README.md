@@ -109,6 +109,12 @@ Qwen 8B multilingual direct pipeline (recommended):
 bash scripts/run_qwen3_8b_multilang_direct_pipeline.sh
 ```
 
+Gemma 3 12B multilingual direct pipeline:
+
+```bash
+bash scripts/run_gemma3_12b_multilang_direct_pipeline.sh
+```
+
 Individual Qwen 8B entrypoints:
 
 ```bash

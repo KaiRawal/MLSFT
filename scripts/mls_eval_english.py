@@ -53,7 +53,9 @@ def resolve_dtype(accelerator: str) -> str:
     if accelerator == "mps":
         return "float16"
     if accelerator == "cuda":
-        return "bfloat16"
+        if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+            return "bfloat16"
+        return "float16"
     return "float32"
 
 
