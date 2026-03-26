@@ -1,16 +1,16 @@
-ctranslate2==4.7.1
+# ctranslate2==4.7.1
 datasets==4.3.0
 pandas==3.0.1
 python-dotenv==1.2.2
 sentencepiece==0.2.1
-torch
+# torch
 accelerate
-torchvision
+# torchvision
 tqdm==4.67.3
 transformers==4.55.4
 trl==0.22.2
 unsloth==2026.3.11
 vcs-versioning
-fschat[model_worker,llm_judge]==0.2.36
+# fschat[model_worker,llm_judge]==0.2.36
 shortuuid==1.0.0
 vllm==0.8.0
