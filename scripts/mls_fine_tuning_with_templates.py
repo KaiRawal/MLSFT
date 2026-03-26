@@ -24,7 +24,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
@@ -94,8 +94,8 @@ def build_dataset(input_csv: Path, template_name: str) -> tuple[Dataset, Any]:
     return dataset, template_name
 
 
-def apply_template(dataset: Dataset, tokenizer: Any) -> Dataset:
-    def format_row(example: dict[str, Any]) -> dict[str, str]:
+def build_formatting_func(tokenizer: Any) -> Callable[[dict[str, Any]], str]:
+    def format_row(example: dict[str, Any]) -> str:
         user_content = example["instruction"]
         if example.get("input") and str(example["input"]).lower() != "nan":
             user_content += "\n\n" + str(example["input"])
@@ -110,9 +110,9 @@ def apply_template(dataset: Dataset, tokenizer: Any) -> Dataset:
             tokenize=False,
             add_generation_prompt=False,
         )
-        return {"text": text}
+        return text
 
-    return dataset.map(format_row)
+    return format_row
 
 
 def resolve_hf_push_target(config: dict[str, Any]) -> tuple[str, str, str]:
@@ -205,10 +205,14 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
 
     dataset, template_name = build_dataset(Path(config["input_csv"]), config["template_name"])
     tokenizer = get_chat_template(tokenizer, chat_template=template_name)
-    dataset = apply_template(dataset, tokenizer)
+    formatting_func = build_formatting_func(tokenizer)
+
+    print(f"Using template: {template_name}")
+    print(f"Raw dataset columns: {dataset.column_names}")
+    preview = formatting_func(dataset[0]) if len(dataset) > 0 else ""
+    print(f"Formatted preview: {preview[:300]}")
 
     sft_args = SFTConfig(
-        dataset_text_field="text",
         per_device_train_batch_size=int(config.get("per_device_train_batch_size", 2)),
         gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
         warmup_steps=int(config.get("warmup_steps", 5)),
@@ -234,6 +238,7 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         "eval_dataset": None,
         "args": sft_args,
         "processing_class": tokenizer,
+        "formatting_func": formatting_func,
     }
 
     trainer = SFTTrainer(**trainer_kwargs)
