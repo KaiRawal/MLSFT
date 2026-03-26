@@ -82,40 +82,7 @@ def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, boo
     return fp16, bf16
 
 
-# ---------------------------------------------------------------------------
-# Model-family detection
-# ---------------------------------------------------------------------------
-# Maps lowercase substrings found in a model name to a training-path label.
-# "text"       — bare tokenizer, SFTTrainer text path (dataset_text_field="text")
-# "multimodal" — full Processor, SFTTrainer multimodal path (messages column,
-#                no dataset_text_field)
-#
-# Add new families here as needed.
-_MODEL_FAMILY_WHITELIST: list[tuple[str, str]] = [
-    ("qwen",  "text"),
-    ("llama", "text"),
-    ("gemma", "multimodal"),
-]
-
-
-def detect_model_family(model_name: str) -> str:
-    lower = model_name.lower()
-    for substring, family in _MODEL_FAMILY_WHITELIST:
-        if substring in lower:
-            return family
-    raise ValueError(
-        f"Model '{model_name}' did not match any entry in _MODEL_FAMILY_WHITELIST. "
-        f"Known substrings: {[s for s, _ in _MODEL_FAMILY_WHITELIST]}. "
-        f"Add an entry for this model before running."
-    )
-
-
-def build_dataset(
-    input_csv: Path,
-    template_name: str,
-    tokenizer: Any,
-    model_family: str = "text",
-) -> tuple[Dataset, Any]:
+def build_dataset(input_csv: Path, template_name: str, tokenizer: Any) -> tuple[Dataset, Any]:
     df = pd.read_csv(input_csv)
     validate_columns(df)
     df["instruction"] = df["instruction"].astype(str)
@@ -134,24 +101,12 @@ def build_dataset(
             {"role": "assistant", "content": example["response"]},
         ]
 
-        if model_family == "multimodal":
-            # Gemma-3 (and future multimodal models): SFTTrainer's multimodal
-            # path expects a "messages" column (list of role/content dicts) and
-            # handles formatting + tokenization itself via the Processor.
-            # dataset_text_field must NOT be set in SFTConfig for this path.
-            return {"messages": messages}
-        else:
-            # Text-only models (Qwen, Llama, …): SFTTrainer's text path expects
-            # a pre-formatted "text" column and dataset_text_field="text".
-            # The "messages" column must be absent — the standard HF data collator
-            # (used by these models) will try to tensorise every column and crash
-            # on a list-of-dicts with "Could not infer dtype of dict".
-            text = tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=False,
-            )
-            return {"text": text}
+        text = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=False,
+        )
+        return {"text": text}
 
     dataset = dataset.map(format_to_messages)
     return dataset, template_name
@@ -248,22 +203,11 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         loftq_config=None,
     )
 
-    model_family = detect_model_family(config["model_name"])
     tokenizer = get_chat_template(tokenizer, chat_template=config["template_name"])
-    dataset, template_name = build_dataset(
-        Path(config["input_csv"]),
-        config["template_name"],
-        tokenizer,
-        model_family=model_family,
-    )
-
-    # dataset_text_field is only valid for the text-only SFTTrainer path.
-    # For multimodal models (Gemma-3) SFTTrainer uses the "messages" column
-    # directly via the Processor and ignores dataset_text_field entirely.
-    sft_dataset_text_field = "text" if model_family == "text" else ""
+    dataset, template_name = build_dataset(Path(config["input_csv"]), config["template_name"], tokenizer)
 
     sft_args = SFTConfig(
-        dataset_text_field=sft_dataset_text_field,
+        dataset_text_field="text",
         per_device_train_batch_size=int(config.get("per_device_train_batch_size", 2)),
         gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
         warmup_steps=int(config.get("warmup_steps", 5)),
@@ -280,11 +224,6 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         bf16=bf16,
         max_grad_norm=float(config.get("max_grad_norm", 1.0)),
         dataloader_num_workers=int(config.get("dataloader_num_workers", 2)),
-        # Must be False for Gemma-3 (and any model whose processing_class is a
-        # multimodal Processor rather than a bare tokenizer). LengthGroupedSampler
-        # requires input_ids to be present in the dataset before training begins;
-        # unsloth pre-populates these for text-only models but not for Processor-
-        # based ones, causing a crash. False is the safe default across all families.
         group_by_length=bool(config.get("group_by_length", False)),
     )
 
@@ -293,7 +232,13 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         "train_dataset": dataset,
         "eval_dataset": None,
         "args": sft_args,
-        "processing_class": tokenizer,
+        # Use the old `tokenizer` kwarg rather than `processing_class`.
+        # With `processing_class`, newer TRL inspects the object type and routes
+        # Gemma-3's Gemma3Processor into a multimodal training path that expects
+        # a "messages" column and ignores dataset_text_field — breaking text-only
+        # fine-tuning.  The `tokenizer` kwarg forces the text path for all model
+        # families, which is what all working unsloth Gemma-3 examples use.
+        "tokenizer": tokenizer,
     }
 
     trainer = SFTTrainer(**trainer_kwargs)
