@@ -209,6 +209,7 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     dataset, template_name = build_dataset(Path(config["input_csv"]), config["template_name"], tokenizer)
 
     sft_args = SFTConfig(
+        dataset_text_field="text",
         per_device_train_batch_size=int(config.get("per_device_train_batch_size", 2)),
         gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 4)),
         warmup_steps=int(config.get("warmup_steps", 5)),
