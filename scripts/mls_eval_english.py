@@ -23,7 +23,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -67,6 +66,33 @@ def extract_output(choices: Any) -> str:
         return choices[0]["turns"][0]
     except Exception:
         return ""
+
+
+def strip_nested_think_tags(text: str) -> str:
+    """Remove content wrapped in <think>...</think>, including nested blocks."""
+    open_tag = "<think>"
+    close_tag = "</think>"
+    i = 0
+    depth = 0
+    out: list[str] = []
+
+    while i < len(text):
+        if text.startswith(open_tag, i):
+            depth += 1
+            i += len(open_tag)
+            continue
+
+        if text.startswith(close_tag, i):
+            if depth > 0:
+                depth -= 1
+                i += len(close_tag)
+                continue
+
+        if depth == 0:
+            out.append(text[i])
+        i += 1
+
+    return "".join(out).strip()
 
 
 def ensure_exists(path: Path, label: str) -> None:
@@ -126,10 +152,7 @@ def remove_thinking_tokens(jsonl_path: Path) -> Path:
             if "choices" in data and isinstance(data["choices"], list):
                 for choice in data["choices"]:
                     if "turns" in choice and isinstance(choice["turns"], list):
-                        choice["turns"] = [
-                            re.sub(r'<think>.*?</think>', '', turn, flags=re.DOTALL).strip()
-                            for turn in choice["turns"]
-                        ]
+                        choice["turns"] = [strip_nested_think_tags(turn) for turn in choice["turns"]]
             processed_lines.append(json.dumps(data))
     
     with open(jsonl_path, "w", encoding="utf-8") as f:
@@ -140,7 +163,7 @@ def remove_thinking_tokens(jsonl_path: Path) -> Path:
     return backup_path
 
 
-def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
+def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     sorry_bench_dir = Path(config["sorry_bench_dir"])
     ensure_exists(sorry_bench_dir, "sorry_bench_dir")
     accelerator = detect_accelerator()
@@ -170,10 +193,18 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    copied_answer = output_dir / f"{config['model_id']}_model_answer.jsonl"
-    copied_backup = output_dir / f"{config['model_id']}_model_answer_backup.jsonl"
-    copied_judgment = output_dir / f"{config['model_id']}_model_judgment.jsonl"
+    answer_dir = output_dir / "model_answer_stripped"
+    backup_dir = output_dir / "model_answer_backup"
+    judgment_dir = output_dir / "model_judgment"
+    answer_dir.mkdir(parents=True, exist_ok=True)
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    judgment_dir.mkdir(parents=True, exist_ok=True)
+
+    copied_answer = answer_dir / f"{config['model_id']}_model_answer.jsonl"
+    copied_backup = backup_dir / f"{config['model_id']}_model_answer_backup.jsonl"
+    copied_judgment = judgment_dir / f"{config['model_id']}_model_judgment.jsonl"
     merged_csv = output_dir / f"{config['model_id']}_english_results.csv"
+    detailed_csv = output_dir / f"{config['model_id']}_english_results_detailed.csv"
 
     shutil.copy(model_answer, copied_answer)
     shutil.copy(backup_model_answer, copied_backup)
@@ -181,9 +212,11 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
 
     questions_df = read_jsonl(Path(config["english_questions_jsonl"]))
     answers_df = read_jsonl(copied_answer)
+    raw_answers_df = read_jsonl(copied_backup)
     judgments_df = read_jsonl(copied_judgment)
 
     answers_df["Output"] = answers_df["choices"].apply(extract_output)
+    raw_answers_df["Output"] = raw_answers_df["choices"].apply(extract_output)
     if "score" in judgments_df.columns:
         judgments_df = judgments_df.rename(columns={"score": "Rating"})
     elif "judgment" in judgments_df.columns:
@@ -198,7 +231,22 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
     merged_df["Prompt"] = merged_df["Prompt"].apply(lambda x: x[0] if isinstance(x, list) and x else x)
     merged_df.to_csv(merged_csv, index=False)
 
-    return copied_answer, copied_backup, copied_judgment, merged_csv
+    detailed_questions_df = questions_df[["question_id", "Prompt"]].copy()
+    detailed_questions_df["Prompt"] = detailed_questions_df["Prompt"].apply(
+        lambda x: x[0] if isinstance(x, list) and x else x
+    )
+    raw_outputs_df = raw_answers_df[["question_id", "Output"]].rename(columns={"Output": "model_output_raw"})
+    stripped_outputs_df = answers_df[["question_id", "Output"]].rename(columns={"Output": "model_output_stripped"})
+    detailed_judgments_df = judgments_df[["question_id", "Rating"]].rename(columns={"Rating": "judgement"})
+
+    detailed_df = detailed_questions_df.merge(raw_outputs_df, on="question_id", how="inner")
+    detailed_df = detailed_df.merge(stripped_outputs_df, on="question_id", how="inner")
+    detailed_df = detailed_df.merge(detailed_judgments_df, on="question_id", how="inner")
+    detailed_df = detailed_df.rename(columns={"Prompt": "prompt"})
+    detailed_df = detailed_df[["prompt", "model_output_raw", "model_output_stripped", "judgement"]]
+    detailed_df.to_csv(detailed_csv, index=False)
+
+    return copied_answer, copied_backup, copied_judgment, merged_csv, detailed_csv
 
 
 def main() -> None:
@@ -207,12 +255,13 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config(args.config)
-    answer_file, backup_file, judgment_file, result_file = run_eval(config)
+    answer_file, backup_file, judgment_file, result_file, detailed_result_file = run_eval(config)
 
     print(f"Saved model answers to: {answer_file}")
     print(f"Saved model answers backup to: {backup_file}")
     print(f"Saved model judgments to: {judgment_file}")
     print(f"Saved merged results to: {result_file}")
+    print(f"Saved detailed merged results to: {detailed_result_file}")
 
 
 if __name__ == "__main__":

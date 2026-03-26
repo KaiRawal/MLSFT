@@ -25,10 +25,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import gc
 import json
 import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -142,6 +142,40 @@ def save_jsonl(path: Path, items: list[dict[str, Any]]) -> None:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 
+def extract_output(choices: Any) -> str:
+    try:
+        return choices[0]["turns"][0]
+    except Exception:
+        return ""
+
+
+def strip_nested_think_tags(text: str) -> str:
+    """Remove content wrapped in <think>...</think>, including nested blocks."""
+    open_tag = "<think>"
+    close_tag = "</think>"
+    i = 0
+    depth = 0
+    out: list[str] = []
+
+    while i < len(text):
+        if text.startswith(open_tag, i):
+            depth += 1
+            i += len(open_tag)
+            continue
+
+        if text.startswith(close_tag, i):
+            if depth > 0:
+                depth -= 1
+                i += len(close_tag)
+                continue
+
+        if depth == 0:
+            out.append(text[i])
+        i += 1
+
+    return "".join(out).strip()
+
+
 def batch_translate(
     texts: list[str],
     src_lang: str,
@@ -172,11 +206,19 @@ def batch_translate(
     return results
 
 
-def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
+def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, Path]:
     sorry_bench_dir = Path(config["sorry_bench_dir"])
     nllb_ct2_dir = Path(config["nllb_ct2_dir"])
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
+    backup_dir = output_dir / "model_answer_backup"
+    stripped_dir = output_dir / "stripped_local_answers"
+    translated_dir = output_dir / "translated_answers"
+    judgment_dir = output_dir / "translated_judgment"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    stripped_dir.mkdir(parents=True, exist_ok=True)
+    translated_dir.mkdir(parents=True, exist_ok=True)
+    judgment_dir.mkdir(parents=True, exist_ok=True)
     accelerator = detect_accelerator()
     generation_dtype = resolve_dtype(accelerator)
     model_path = resolve_model_path(config)
@@ -199,16 +241,23 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
     answer_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
     ensure_exists(answer_path, "model answer jsonl")
 
+    backup_answer_path = answer_path.with_stem(f"{answer_path.stem}_backup")
+    shutil.copy(answer_path, backup_answer_path)
+
     raw_answers = load_jsonl(answer_path)
-    cleaned_answers: list[dict[str, Any]] = []
+    stripped_answers: list[dict[str, Any]] = []
     source_texts: list[str] = []
 
     for item in raw_answers:
-        original_text = item["choices"][0]["turns"][0]
-        cleaned_text = re.sub(r"<think>.*?</think>", "", original_text, flags=re.DOTALL).strip()
-        item["choices"][0]["turns"][0] = cleaned_text
-        cleaned_answers.append(item)
+        stripped_item = copy.deepcopy(item)
+        original_text = stripped_item["choices"][0]["turns"][0]
+        cleaned_text = strip_nested_think_tags(original_text)
+        stripped_item["choices"][0]["turns"][0] = cleaned_text
+        stripped_answers.append(stripped_item)
         source_texts.append(cleaned_text)
+
+    stripped_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_stripped.jsonl"
+    save_jsonl(stripped_path, stripped_answers)
 
     translator_device = resolve_requested_ct2_device(config.get("translate_device"), accelerator)
     translator = ctranslate2.Translator(str(nllb_ct2_dir), device=translator_device, compute_type="int8")
@@ -225,10 +274,14 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
 
     translated_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_translated.jsonl"
     translated_rows: list[dict[str, Any]] = []
-    for i, item in enumerate(cleaned_answers):
-        item["choices"][0]["turns"][0] = translated_texts[i]
-        item["translation_meta"] = {"engine": "CTranslate2", "model": config.get("nllb_model_name", "facebook/nllb-200-3.3B")}
-        translated_rows.append(item)
+    for i, item in enumerate(stripped_answers):
+        translated_item = copy.deepcopy(item)
+        translated_item["choices"][0]["turns"][0] = translated_texts[i]
+        translated_item["translation_meta"] = {
+            "engine": "CTranslate2",
+            "model": config.get("nllb_model_name", "facebook/nllb-200-3.3B"),
+        }
+        translated_rows.append(translated_item)
     save_jsonl(translated_path, translated_rows)
 
     del translator
@@ -277,17 +330,68 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
             }
         )
 
-    raw_copy = output_dir / f"{config['model_id']}_raw_local_answers.jsonl"
-    translated_copy = output_dir / f"{config['model_id']}_translated_answers.jsonl"
-    judgment_copy = output_dir / f"{config['model_id']}_translated_judgment.jsonl"
+    backup_copy = backup_dir / f"{config['model_id']}_model_answer_backup.jsonl"
+    stripped_copy = stripped_dir / f"{config['model_id']}_stripped_local_answers.jsonl"
+    translated_copy = translated_dir / f"{config['model_id']}_translated_answers.jsonl"
+    judgment_copy = judgment_dir / f"{config['model_id']}_translated_judgment.jsonl"
     merged_csv = output_dir / f"{config['model_id']}_{config['language_code']}_translated_eval.csv"
+    detailed_csv = output_dir / f"{config['model_id']}_{config['language_code']}_translated_eval_detailed.csv"
 
-    shutil.copy(answer_path, raw_copy)
+    shutil.copy(backup_answer_path, backup_copy)
+    shutil.copy(stripped_path, stripped_copy)
     shutil.copy(translated_path, translated_copy)
     shutil.copy(autorater_target, judgment_copy)
     pd.DataFrame(merged).to_csv(merged_csv, index=False)
 
-    return raw_copy, translated_copy, judgment_copy, merged_csv
+    english_questions_df = pd.DataFrame(load_jsonl(english_question_jsonl))
+    local_questions_df = pd.DataFrame(load_jsonl(local_question_jsonl))
+    raw_answers_df = pd.DataFrame(load_jsonl(backup_answer_path))
+    stripped_answers_df = pd.DataFrame(load_jsonl(stripped_path))
+    translated_answers_df = pd.DataFrame(load_jsonl(translated_path))
+    judgments_df = pd.DataFrame(load_jsonl(autorater_target))
+
+    english_questions_df = english_questions_df[["question_id", "turns"]].rename(columns={"turns": "prompt_english"})
+    local_questions_df = local_questions_df[["question_id", "turns"]].rename(columns={"turns": "prompt_translated"})
+    english_questions_df["prompt_english"] = english_questions_df["prompt_english"].apply(
+        lambda x: x[0] if isinstance(x, list) and x else x
+    )
+    local_questions_df["prompt_translated"] = local_questions_df["prompt_translated"].apply(
+        lambda x: x[0] if isinstance(x, list) and x else x
+    )
+
+    raw_answers_df["model_output_raw"] = raw_answers_df["choices"].apply(extract_output)
+    stripped_answers_df["model_output_stripped"] = stripped_answers_df["choices"].apply(extract_output)
+    translated_answers_df["model_output_translated"] = translated_answers_df["choices"].apply(extract_output)
+
+    if "judgment" in judgments_df.columns:
+        judgments_df = judgments_df.rename(columns={"judgment": "judgement"})
+    elif "score" in judgments_df.columns:
+        judgments_df = judgments_df.rename(columns={"score": "judgement"})
+    else:
+        judgments_df["judgement"] = ""
+
+    detailed_df = english_questions_df.merge(local_questions_df, on="question_id", how="inner")
+    detailed_df = detailed_df.merge(raw_answers_df[["question_id", "model_output_raw"]], on="question_id", how="inner")
+    detailed_df = detailed_df.merge(
+        stripped_answers_df[["question_id", "model_output_stripped"]], on="question_id", how="inner"
+    )
+    detailed_df = detailed_df.merge(
+        translated_answers_df[["question_id", "model_output_translated"]], on="question_id", how="inner"
+    )
+    detailed_df = detailed_df.merge(judgments_df[["question_id", "judgement"]], on="question_id", how="inner")
+    detailed_df = detailed_df[
+        [
+            "prompt_english",
+            "prompt_translated",
+            "model_output_raw",
+            "model_output_stripped",
+            "model_output_translated",
+            "judgement",
+        ]
+    ]
+    detailed_df.to_csv(detailed_csv, index=False)
+
+    return backup_copy, stripped_copy, translated_copy, judgment_copy, merged_csv, detailed_csv
 
 
 def main() -> None:
@@ -296,12 +400,14 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config(args.config)
-    raw_file, translated_file, judgment_file, result_file = run_pipeline(config)
+    backup_file, stripped_file, translated_file, judgment_file, result_file, detailed_result_file = run_pipeline(config)
 
-    print(f"Saved raw outputs to: {raw_file}")
+    print(f"Saved model answers backup to: {backup_file}")
+    print(f"Saved stripped local-language outputs to: {stripped_file}")
     print(f"Saved translated outputs to: {translated_file}")
     print(f"Saved judgments to: {judgment_file}")
     print(f"Saved merged results to: {result_file}")
+    print(f"Saved detailed merged results to: {detailed_result_file}")
 
 
 if __name__ == "__main__":
