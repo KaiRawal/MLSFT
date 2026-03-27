@@ -1,0 +1,128 @@
+
+
+
+
+================================================================================
+DIRECT MULTILINGUAL PIPELINE SUMMARY
+================================================================================
+Run ID: Linux_x86_64_virgil_20260327_032646
+Generated at: 2026-03-27 09:21:06
+Summary file: outputs/run_summaries/Linux_x86_64_virgil_20260327_032646.txt
+Detailed step logs: outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs
+
+Language Outcomes
+================================================================================
+  - Hindi | SUCCESS_WITH_SKIPPED_FINETUNE | Fine-tune skipped because model already existed; post-finetune evals completed
+  - Danish | SUCCESS | All steps completed
+  - Chinese | SUCCESS | All steps completed
+  - Greek | SUCCESS | All steps completed
+  - Irish | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/GA_Irish.log
+  - Portuguese | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/PT_Portuguese.log
+  - Spanish | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/ES_Spanish.log
+  - Tagalog | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/TL_Tagalog.log
+
+Step Outcomes
+================================================================================
+  - Hindi | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Hindi | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Hindi | [3/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Hindi | [4/5] Post-finetune English eval (HF model) | SUCCESS | Completed
+  - Hindi | [5/5] Post-finetune translated eval (HF model) | SUCCESS | Completed
+  - Danish | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Danish | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Danish | [3/5] Fine-tuning | SUCCESS | Completed
+  - Danish | [4/5] Post-finetune English eval (HF model) | SUCCESS | Completed
+  - Danish | [5/5] Post-finetune translated eval (HF model) | SUCCESS | Completed
+  - Chinese | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Chinese | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Chinese | [3/5] Fine-tuning | SUCCESS | Completed
+  - Chinese | [4/5] Post-finetune English eval (HF model) | SUCCESS | Completed
+  - Chinese | [5/5] Post-finetune translated eval (HF model) | SUCCESS | Completed
+  - Greek | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Greek | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Greek | [3/5] Fine-tuning | SUCCESS | Completed
+  - Greek | [4/5] Post-finetune English eval (HF model) | SUCCESS | Completed
+  - Greek | [5/5] Post-finetune translated eval (HF model) | SUCCESS | Completed
+  - Irish | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Irish | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Irish | [3/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/GA_Irish.log
+  - Irish | [4/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Irish | [5/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Portuguese | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Portuguese | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Portuguese | [3/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/PT_Portuguese.log
+  - Portuguese | [4/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Portuguese | [5/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Spanish | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Spanish | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Spanish | [3/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/ES_Spanish.log
+  - Spanish | [4/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Spanish | [5/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Tagalog | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Tagalog | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Tagalog | [3/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/TL_Tagalog.log
+  - Tagalog | [4/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Tagalog | [5/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+
+Hard Failures
+================================================================================
+  - Irish | [3/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/GA_Irish.log
+  - Portuguese | [3/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/PT_Portuguese.log
+  - Spanish | [3/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/ES_Spanish.log
+  - Tagalog | [3/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260327_032646_logs/TL_Tagalog.log
+
+Primary Output Directories
+================================================================================
+  - data/outputs/eval_english
+  - data/outputs/eval_translated
+  - data/outputs/fine_tuning
+
+New CSV Files Created During This Run
+================================================================================
+  - data/outputs/eval_english/Qwen3-14B-DA-SynthDolly-1A_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-DA-SynthDolly-1A_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-DA-SynthDolly-1A-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-DA-SynthDolly-1A-PREFT_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-EL-SynthDolly-1A_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-EL-SynthDolly-1A_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-EL-SynthDolly-1A-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-EL-SynthDolly-1A-PREFT_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-ES-SynthDolly-1A-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-ES-SynthDolly-1A-PREFT_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-GA-SynthDolly-1A-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-GA-SynthDolly-1A-PREFT_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-HI-SynthDolly-1A_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-HI-SynthDolly-1A_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-PT-SynthDolly-1A-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-PT-SynthDolly-1A-PREFT_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-TL-SynthDolly-1A-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-TL-SynthDolly-1A-PREFT_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-ZH-SynthDolly-1A_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-ZH-SynthDolly-1A_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-14B-ZH-SynthDolly-1A-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-14B-ZH-SynthDolly-1A-PREFT_english_results_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-DA-SynthDolly-1A_DA_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-DA-SynthDolly-1A_DA_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-DA-SynthDolly-1A-PREFT_DA_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-DA-SynthDolly-1A-PREFT_DA_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-EL-SynthDolly-1A_EL_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-EL-SynthDolly-1A_EL_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-EL-SynthDolly-1A-PREFT_EL_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-EL-SynthDolly-1A-PREFT_EL_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-ES-SynthDolly-1A-PREFT_ES_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-ES-SynthDolly-1A-PREFT_ES_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-GA-SynthDolly-1A-PREFT_GA_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-GA-SynthDolly-1A-PREFT_GA_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-HI-SynthDolly-1A_HI_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-HI-SynthDolly-1A_HI_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-PT-SynthDolly-1A-PREFT_PT_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-PT-SynthDolly-1A-PREFT_PT_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-TL-SynthDolly-1A-PREFT_TL_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-TL-SynthDolly-1A-PREFT_TL_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-ZH-SynthDolly-1A-PREFT_ZH_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-ZH-SynthDolly-1A-PREFT_ZH_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-14B-ZH-SynthDolly-1A_ZH_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-ZH-SynthDolly-1A_ZH_translated_eval_detailed.csv
+
+Final Status: FAILURE (one or more hard failures occurred)
+================================================================================

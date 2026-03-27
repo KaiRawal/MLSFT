@@ -1,0 +1,41 @@
+
+
+
+
+================================================================================
+DIRECT MULTILINGUAL PIPELINE SUMMARY
+================================================================================
+Run ID: Linux_x86_64_virgil_20260327_160359
+Generated at: 2026-03-27 16:48:25
+Summary file: outputs/run_summaries/Linux_x86_64_virgil_20260327_160359.txt
+Detailed step logs: outputs/run_summaries/Linux_x86_64_virgil_20260327_160359_logs
+
+Language Outcomes
+================================================================================
+  - Tagalog | SUCCESS_WITH_SKIPPED_FINETUNE | Fine-tune skipped because model already existed; post-finetune evals completed
+
+Step Outcomes
+================================================================================
+  - Tagalog | [1/5] Pre-finetune English eval | SUCCESS | Completed
+  - Tagalog | [2/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Tagalog | [3/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Tagalog | [4/5] Post-finetune English eval (HF model) | SUCCESS | Completed
+  - Tagalog | [5/5] Post-finetune translated eval (HF model) | SUCCESS | Completed
+
+Hard Failures
+================================================================================
+  - None
+
+Primary Output Directories
+================================================================================
+  - data/outputs/eval_english
+  - data/outputs/eval_translated
+  - data/outputs/fine_tuning
+
+New CSV Files Created During This Run
+================================================================================
+  - data/outputs/eval_translated/Qwen3-14B-TL-SynthDolly-1A_TL_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-14B-TL-SynthDolly-1A_TL_translated_eval_detailed.csv
+
+Final Status: SUCCESS (no hard failures)
+================================================================================
