@@ -1,0 +1,9 @@
+model_finetune,preft_rate_english,preft_rate_translated,postft_rate_english,postft_rate_translated
+Qwen3-8B-DA-SynthDolly-1A,0.390909,0.340909,0.290909,0.245455
+Qwen3-8B-EL-SynthDolly-1A,0.381818,0.272727,0.331818,0.284091
+Qwen3-8B-ES-SynthDolly-1A,0.381818,0.338636,0.286364,0.352273
+Qwen3-8B-GA-SynthDolly-1A,0.386364,0.268182,0.336364,0.093182
+Qwen3-8B-HI-SynthDolly-1A,0.400000,0.370455,0.281818,0.252273
+Qwen3-8B-PT-SynthDolly-1A,0.372727,0.313636,0.350000,0.261364
+Qwen3-8B-TL-SynthDolly-1A,0.386364,0.325000,0.320455,0.284091
+Qwen3-8B-ZH-SynthDolly-1A,0.384091,0.175000,0.179545,0.229545

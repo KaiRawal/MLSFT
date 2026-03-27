@@ -10,6 +10,9 @@ For each file, computes:
 - count_ones: number of judgement values equal to 1
 - total_length: total number of rows in the judgement column
 
+Pre/post rates are computed as proportion of ones:
+- rate = count_ones / total_length
+
 Writes one consolidated CSV to analysis/judgement_stats_summary.csv,
 overwriting it on each run.
 """
@@ -28,7 +31,7 @@ INPUT_PATTERNS = [
 ]
 OUTPUT_CSV = Path(__file__).resolve().parent / "judgement_stats_summary.csv"
 COMPARISON_OUTPUT_CSV = (
-    Path(__file__).resolve().parent / "judgement_stats_pre_post_rates.csv"
+    Path(__file__).resolve().parent / "compliance_rate_stats.csv"
 )
 
 
@@ -129,8 +132,8 @@ def build_pre_post_rate_rows(rows: List[Dict[str, int | str]]) -> List[Dict[str,
         model_finetune, status, eval_type = extract_model_finetune_and_eval_type(csv_name)
 
         total = int(row["total_length"])
-        zeros = int(row["count_zeros"])
-        rate = (zeros / total) if total else 0.0
+        ones = int(row["count_ones"])
+        rate = (ones / total) if total else 0.0
 
         if model_finetune not in grouped:
             grouped[model_finetune] = {
