@@ -106,13 +106,12 @@ def build_dataset(input_csv: Path, template_name: str, tokenizer: Any) -> tuple[
             tokenize=False,
             add_generation_prompt=False,
         )
-        return {"text": text}
+        return {"messages": messages, "text": text}
 
     dataset = dataset.map(format_to_messages)
+    print(f"Using chat template: {template_name}")
+    print("Example formatted prompt:\n", dataset[0])
     return dataset, template_name
-
-
-
 
 
 def resolve_hf_push_target(config: dict[str, Any]) -> tuple[str, str, str]:
