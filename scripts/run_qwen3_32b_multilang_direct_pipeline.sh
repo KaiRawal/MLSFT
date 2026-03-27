@@ -179,15 +179,30 @@ fi
 
 echo "Current working directory: $(pwd)"
 echo "Using fixed base model: unsloth/Qwen3-32B"
-echo "Pipeline per language: pre-English eval -> pre-translated eval -> fine-tune -> post-English eval -> post-translated eval"
+echo "Pipeline stage 1: fine-tune all languages (with HF push)"
+echo "Pipeline stage 2: run all evals (pre-English, pre-translated, post-English, post-translated)"
 
-run_language_pipeline() {
+declare -a FINETUNE_SUCCESS_LANGS=()
+declare -a FINETUNE_SKIPPED_EXISTING_LANGS=()
+declare -a FINETUNE_FAILED_LANGS=()
+
+array_contains() {
+  local needle="$1"
+  shift
+  local item
+  for item in "$@"; do
+    if [[ "${item}" == "${needle}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+run_finetune_stage_for_language() {
   local language="$1"
   local lang_code="$2"
-  local source_lang_code="$3"
 
   local repo_name="Qwen3-32B-${lang_code}-SynthDolly-1A"
-  local preft_model_id="${repo_name}-PREFT"
   local full_repo_id="${HF_USER}/${repo_name}"
   local expected_existing_msg="Target Hugging Face repo already exists: ${full_repo_id}. Set allow_existing_hf_repo=true to permit re-training and overwriting."
   local step_log="${LOG_DIR}/${lang_code}_${language// /_}.log"
@@ -200,55 +215,12 @@ run_language_pipeline() {
   echo ""
   echo ""
   echo ""
-  echo "=== ${language} (${lang_code}) -> ${repo_name} ==="
+  echo "=== ${language} (${lang_code}) -> ${repo_name} [Fine-tuning Stage] ==="
+  # Disabled in finetune config for now:
+  #   "load_in_4bit": true
+  #   "max_seq_length": 1024
 
-  if run_step "${language}" "[1/5]" "Pre-finetune English eval" "${step_log}" python "${ENGLISH_EVAL_SCRIPT}" --config <(cat <<JSON
-{
-  "model_path": "unsloth/Qwen3-32B",
-  "model_id": "${preft_model_id}",
-  "sorry_bench_dir": "external/sorry-bench",
-  "english_questions_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
-  "output_dir": "data/outputs/eval_english"
-}
-JSON
-); then
-    record_step_result "${language}" "[1/5] Pre-finetune English eval" "SUCCESS" "Completed"
-  else
-    record_step_result "${language}" "[1/5] Pre-finetune English eval" "FAILED" "See ${step_log}"
-    record_hard_failure "${language}" "[1/5] Pre-finetune English eval" "See ${step_log}"
-    language_hard_failure=1
-  fi
-
-  if [[ "${language_hard_failure}" -eq 0 ]]; then
-    if run_step "${language}" "[2/5]" "Pre-finetune translated eval" "${step_log}" python "${TRANSLATED_EVAL_SCRIPT}" --config <(cat <<JSON
-{
-  "model_path": "unsloth/Qwen3-32B",
-  "model_id": "${preft_model_id}",
-  "language_code": "${lang_code}",
-  "source_lang_code": "${source_lang_code}",
-  "local_prompt_csv": "data/inputs/eval_prompts/MLSFT - ${language} Evaluation Prompts  - Sheet1.csv",
-  "english_prompt_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
-  "sorry_bench_dir": "external/sorry-bench",
-  "nllb_ct2_dir": "external/nllb-3.3b-ct2-int8",
-  "nllb_model_name": "facebook/nllb-200-3.3B",
-  "translate_device": "auto",
-  "translation_batch_size": 32,
-  "output_dir": "data/outputs/eval_translated"
-}
-JSON
-); then
-      record_step_result "${language}" "[2/5] Pre-finetune translated eval" "SUCCESS" "Completed"
-    else
-      record_step_result "${language}" "[2/5] Pre-finetune translated eval" "FAILED" "See ${step_log}"
-      record_hard_failure "${language}" "[2/5] Pre-finetune translated eval" "See ${step_log}"
-      language_hard_failure=1
-    fi
-  else
-    record_step_result "${language}" "[2/5] Pre-finetune translated eval" "SKIPPED" "Blocked by earlier failure"
-  fi
-
-  if [[ "${language_hard_failure}" -eq 0 ]]; then
-    if run_step "${language}" "[3/5]" "Fine-tuning" "${step_log}" python "${FINETUNE_SCRIPT}" --config <(cat <<JSON
+  if run_step "${language}" "[FT 1/1]" "Fine-tuning" "${step_log}" python "${FINETUNE_SCRIPT}" --config <(cat <<JSON
 {
   "language": "${language}",
   "model_name": "unsloth/Qwen3-32B",
@@ -261,31 +233,112 @@ JSON
   "summary_json": "data/outputs/fine_tuning/${repo_name}/train_summary.json",
   "num_train_epochs": 1,
   "learning_rate": 5e-5,
-  "per_device_train_batch_size": 2,
-  "gradient_accumulation_steps": 4,
+  "per_device_train_batch_size": 1,
+  "gradient_accumulation_steps": 8,
   "push_to_hub": true,
   "allow_existing_hf_repo": false,
   "hf_repo": "${repo_name}"
 }
 JSON
 ); then
-      record_step_result "${language}" "[3/5] Fine-tuning" "SUCCESS" "Completed"
-    else
-      if grep -Fq "${expected_existing_msg}" "${step_log}"; then
-        skipped_existing_model=1
-        record_step_result "${language}" "[3/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Existing HF model reused"
-      else
-        record_step_result "${language}" "[3/5] Fine-tuning" "FAILED" "See ${step_log}"
-        record_hard_failure "${language}" "[3/5] Fine-tuning" "See ${step_log}"
-        language_hard_failure=1
-      fi
-    fi
+    record_step_result "${language}" "[FT 1/1] Fine-tuning" "SUCCESS" "Completed"
   else
-    record_step_result "${language}" "[3/5] Fine-tuning" "SKIPPED" "Blocked by earlier failure"
+    if grep -Fq "${expected_existing_msg}" "${step_log}"; then
+      skipped_existing_model=1
+      record_step_result "${language}" "[FT 1/1] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Existing HF model reused"
+    else
+      record_step_result "${language}" "[FT 1/1] Fine-tuning" "FAILED" "See ${step_log}"
+      record_hard_failure "${language}" "[FT 1/1] Fine-tuning" "See ${step_log}"
+      language_hard_failure=1
+    fi
   fi
 
   if [[ "${language_hard_failure}" -eq 0 ]]; then
-    if run_step "${language}" "[4/5]" "Post-finetune English eval (HF model)" "${step_log}" python "${ENGLISH_EVAL_SCRIPT}" --config <(cat <<JSON
+    if [[ "${skipped_existing_model}" -eq 1 ]]; then
+      FINETUNE_SKIPPED_EXISTING_LANGS+=("${lang_code}")
+      record_language_result "${language}" "FINETUNE_COMPLETE_WITH_EXISTING_MODEL" "Fine-tune skipped because model already existed"
+    else
+      FINETUNE_SUCCESS_LANGS+=("${lang_code}")
+      record_language_result "${language}" "FINETUNE_COMPLETE" "Fine-tuning and HF push completed"
+    fi
+    return 0
+  fi
+
+  FINETUNE_FAILED_LANGS+=("${lang_code}")
+  record_language_result "${language}" "FAILED_FINETUNE_STAGE" "Fine-tuning hard failure; see ${step_log}"
+  return 1
+}
+
+run_eval_stage_for_language() {
+  local language="$1"
+  local lang_code="$2"
+  local source_lang_code="$3"
+
+  local repo_name="Qwen3-32B-${lang_code}-SynthDolly-1A"
+  local preft_model_id="${repo_name}-PREFT"
+  local step_log="${LOG_DIR}/${lang_code}_${language// /_}.log"
+
+  local language_hard_failure=0
+
+  echo ""
+  echo ""
+  echo ""
+  echo "=== ${language} (${lang_code}) -> ${repo_name} [Evaluation Stage] ==="
+
+  if run_step "${language}" "[EVAL 1/4]" "Pre-finetune English eval" "${step_log}" python "${ENGLISH_EVAL_SCRIPT}" --config <(cat <<JSON
+{
+  "model_path": "unsloth/Qwen3-32B",
+  "model_id": "${preft_model_id}",
+  "sorry_bench_dir": "external/sorry-bench",
+  "english_questions_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
+  "output_dir": "data/outputs/eval_english"
+}
+JSON
+); then
+    record_step_result "${language}" "[EVAL 1/4] Pre-finetune English eval" "SUCCESS" "Completed"
+  else
+    record_step_result "${language}" "[EVAL 1/4] Pre-finetune English eval" "FAILED" "See ${step_log}"
+    record_hard_failure "${language}" "[EVAL 1/4] Pre-finetune English eval" "See ${step_log}"
+    language_hard_failure=1
+  fi
+
+  if [[ "${language_hard_failure}" -eq 0 ]]; then
+    if run_step "${language}" "[EVAL 2/4]" "Pre-finetune translated eval" "${step_log}" python "${TRANSLATED_EVAL_SCRIPT}" --config <(cat <<JSON
+{
+  "model_path": "unsloth/Qwen3-32B",
+  "model_id": "${preft_model_id}",
+  "language_code": "${lang_code}",
+  "source_lang_code": "${source_lang_code}",
+  "local_prompt_csv": "data/inputs/eval_prompts/MLSFT - ${language} Evaluation Prompts  - Sheet1.csv",
+  "english_prompt_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
+  "sorry_bench_dir": "external/sorry-bench",
+  "nllb_ct2_dir": "external/nllb-3.3b-ct2-int8",
+  "nllb_model_name": "facebook/nllb-200-3.3B",
+  "translate_device": "auto",
+  "translation_batch_size": 32,
+  "output_dir": "data/outputs/eval_translated"
+}
+JSON
+); then
+      record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "SUCCESS" "Completed"
+    else
+      record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "FAILED" "See ${step_log}"
+      record_hard_failure "${language}" "[EVAL 2/4] Pre-finetune translated eval" "See ${step_log}"
+      language_hard_failure=1
+    fi
+  else
+    record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "SKIPPED" "Blocked by earlier failure"
+  fi
+
+  if array_contains "${lang_code}" "${FINETUNE_FAILED_LANGS[@]}"; then
+    record_step_result "${language}" "[EVAL 3/4] Post-finetune English eval (HF model)" "SKIPPED" "Blocked by fine-tuning failure"
+    record_step_result "${language}" "[EVAL 4/4] Post-finetune translated eval (HF model)" "SKIPPED" "Blocked by fine-tuning failure"
+    record_language_result "${language}" "FAILED" "Fine-tuning failed in stage 1; post-finetune evals skipped"
+    return 1
+  fi
+
+  if [[ "${language_hard_failure}" -eq 0 ]]; then
+    if run_step "${language}" "[EVAL 3/4]" "Post-finetune English eval (HF model)" "${step_log}" python "${ENGLISH_EVAL_SCRIPT}" --config <(cat <<JSON
 {
   "model_path": "${repo_name}",
   "model_id": "${repo_name}",
@@ -295,18 +348,18 @@ JSON
 }
 JSON
 ); then
-      record_step_result "${language}" "[4/5] Post-finetune English eval (HF model)" "SUCCESS" "Completed"
+      record_step_result "${language}" "[EVAL 3/4] Post-finetune English eval (HF model)" "SUCCESS" "Completed"
     else
-      record_step_result "${language}" "[4/5] Post-finetune English eval (HF model)" "FAILED" "See ${step_log}"
-      record_hard_failure "${language}" "[4/5] Post-finetune English eval (HF model)" "See ${step_log}"
+      record_step_result "${language}" "[EVAL 3/4] Post-finetune English eval (HF model)" "FAILED" "See ${step_log}"
+      record_hard_failure "${language}" "[EVAL 3/4] Post-finetune English eval (HF model)" "See ${step_log}"
       language_hard_failure=1
     fi
   else
-    record_step_result "${language}" "[4/5] Post-finetune English eval (HF model)" "SKIPPED" "Blocked by earlier failure"
+    record_step_result "${language}" "[EVAL 3/4] Post-finetune English eval (HF model)" "SKIPPED" "Blocked by earlier failure"
   fi
 
   if [[ "${language_hard_failure}" -eq 0 ]]; then
-    if run_step "${language}" "[5/5]" "Post-finetune translated eval (HF model)" "${step_log}" python "${TRANSLATED_EVAL_SCRIPT}" --config <(cat <<JSON
+    if run_step "${language}" "[EVAL 4/4]" "Post-finetune translated eval (HF model)" "${step_log}" python "${TRANSLATED_EVAL_SCRIPT}" --config <(cat <<JSON
 {
   "model_path": "${repo_name}",
   "model_id": "${repo_name}",
@@ -323,26 +376,26 @@ JSON
 }
 JSON
 ); then
-      record_step_result "${language}" "[5/5] Post-finetune translated eval (HF model)" "SUCCESS" "Completed"
+      record_step_result "${language}" "[EVAL 4/4] Post-finetune translated eval (HF model)" "SUCCESS" "Completed"
     else
-      record_step_result "${language}" "[5/5] Post-finetune translated eval (HF model)" "FAILED" "See ${step_log}"
-      record_hard_failure "${language}" "[5/5] Post-finetune translated eval (HF model)" "See ${step_log}"
+      record_step_result "${language}" "[EVAL 4/4] Post-finetune translated eval (HF model)" "FAILED" "See ${step_log}"
+      record_hard_failure "${language}" "[EVAL 4/4] Post-finetune translated eval (HF model)" "See ${step_log}"
       language_hard_failure=1
     fi
   else
-    record_step_result "${language}" "[5/5] Post-finetune translated eval (HF model)" "SKIPPED" "Blocked by earlier failure"
+    record_step_result "${language}" "[EVAL 4/4] Post-finetune translated eval (HF model)" "SKIPPED" "Blocked by earlier failure"
   fi
 
   if [[ "${language_hard_failure}" -eq 0 ]]; then
-    if [[ "${skipped_existing_model}" -eq 1 ]]; then
-      record_language_result "${language}" "SUCCESS_WITH_SKIPPED_FINETUNE" "Fine-tune skipped because model already existed; post-finetune evals completed"
+    if array_contains "${lang_code}" "${FINETUNE_SKIPPED_EXISTING_LANGS[@]}"; then
+      record_language_result "${language}" "SUCCESS_WITH_SKIPPED_FINETUNE" "Fine-tune skipped because model already existed; all evals completed"
     else
-      record_language_result "${language}" "SUCCESS" "All steps completed"
+      record_language_result "${language}" "SUCCESS" "All evals completed after fine-tuning stage"
     fi
     return 0
   fi
 
-  record_language_result "${language}" "FAILED" "One or more hard failures; see ${step_log}"
+  record_language_result "${language}" "FAILED" "Evaluation-stage hard failure(s); see ${step_log}"
   return 1
 }
 
@@ -359,9 +412,20 @@ LANGUAGE_RUNS=(
 
 overall_exit_code=0
 
+echo ""
+echo "=== Stage 1/2: Fine-tuning all languages ==="
 for run in "${LANGUAGE_RUNS[@]}"; do
   IFS='|' read -r language lang_code source_lang_code <<< "${run}"
-  if ! run_language_pipeline "${language}" "${lang_code}" "${source_lang_code}"; then
+  if ! run_finetune_stage_for_language "${language}" "${lang_code}"; then
+    overall_exit_code=1
+  fi
+done
+
+echo ""
+echo "=== Stage 2/2: Running evaluations for all languages ==="
+for run in "${LANGUAGE_RUNS[@]}"; do
+  IFS='|' read -r language lang_code source_lang_code <<< "${run}"
+  if ! run_eval_stage_for_language "${language}" "${lang_code}" "${source_lang_code}"; then
     overall_exit_code=1
   fi
 done
