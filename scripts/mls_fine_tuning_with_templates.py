@@ -82,7 +82,12 @@ def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, boo
     return fp16, bf16
 
 
-def build_dataset(input_csv: Path, template_name: str, tokenizer: Any) -> tuple[Dataset, Any]:
+def build_dataset(
+    input_csv: Path,
+    template_name: str,
+    tokenizer: Any,
+    max_seq_length: int,
+) -> tuple[Dataset, Any]:
     df = pd.read_csv(input_csv)
     validate_columns(df)
     df["instruction"] = df["instruction"].astype(str)
@@ -106,9 +111,23 @@ def build_dataset(input_csv: Path, template_name: str, tokenizer: Any) -> tuple[
             tokenize=False,
             add_generation_prompt=False,
         )
-        return {"messages": messages, "text": text}
+        if 'llama' in template_name or 'gemma' in template_name:
+            return {"messages": messages}
+        return {"text": text}
 
     dataset = dataset.map(format_to_messages)
+
+    def tokenize_function(examples: dict[str, Any]) -> dict[str, Any]:
+        # Tokenize rendered chat text explicitly for model families that expect tokenized inputs.
+        return tokenizer(
+            examples["text"],
+            padding="max_length",
+            truncation=True,
+            max_length=max_seq_length,
+        )
+
+    if 'llama' in template_name or 'gemma' in template_name:
+        dataset = dataset.map(tokenize_function, batched=True)
     print(f"Using chat template: {template_name}")
     print("Example formatted prompt:\n", dataset[0])
     return dataset, template_name
@@ -203,7 +222,12 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     )
 
     tokenizer = get_chat_template(tokenizer, chat_template=config["template_name"])
-    dataset, template_name = build_dataset(Path(config["input_csv"]), config["template_name"], tokenizer)
+    dataset, template_name = build_dataset(
+        Path(config["input_csv"]),
+        config["template_name"],
+        tokenizer,
+        int(config.get("max_seq_length", 2048)),
+    )
 
     sft_args = SFTConfig(
         dataset_text_field="text",
