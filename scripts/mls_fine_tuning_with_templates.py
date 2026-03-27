@@ -10,7 +10,7 @@ Inputs:
 
 Outputs:
     - Training artifacts in output_dir
-    - Local merged model directory in local_model_dir
+    - Optional local merged model directory in local_model_dir (disabled by default)
     - Training summary JSON in summary_json
     - Optional push to Hugging Face Hub (if enabled)
 
@@ -173,8 +173,16 @@ def enforce_existing_repo_policy(full_repo_id: str, hf_token: str, allow_existin
 def run_training(config: dict[str, Any]) -> dict[str, Any]:
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
+    save_local_model = bool(config.get("save_local_model", False))
     local_model_dir = Path(config.get("local_model_dir", output_dir / "model_merged"))
-    local_model_dir.mkdir(parents=True, exist_ok=True)
+    if save_local_model:
+        local_model_dir.mkdir(parents=True, exist_ok=True)
+    else:
+        print("\n" + "!" * 88)
+        print("WARNING: Local merged model export is DISABLED (save_local_model=false).")
+        print(f"No model will be written to: {local_model_dir}")
+        print("Hugging Face push behavior is unchanged and will still run if push_to_hub=true.")
+        print("!" * 88 + "\n")
     accelerator = detect_accelerator()
     fp16, bf16 = precision_flags(config, accelerator)
 
@@ -268,17 +276,19 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
 
     runtime_stats = trainer.train()
 
-    # Always export a local merged model so downstream eval can run without HF push.
-    try:
-        model.save_pretrained_merged(
-            str(local_model_dir),
-            tokenizer,
-            save_method=config.get("save_method", "merged_16bit"),
-        )
-    except AttributeError:
-        # Fallback path if merged-save API is unavailable in the installed version.
-        model.save_pretrained(str(local_model_dir))
-        tokenizer.save_pretrained(str(local_model_dir))
+    if save_local_model:
+        try:
+            model.save_pretrained_merged(
+                str(local_model_dir),
+                tokenizer,
+                save_method=config.get("save_method", "merged_16bit"),
+            )
+        except AttributeError:
+            # Fallback path if merged-save API is unavailable in the installed version.
+            model.save_pretrained(str(local_model_dir))
+            tokenizer.save_pretrained(str(local_model_dir))
+    else:
+        print("Skipped local merged-model save to preserve disk space.")
 
     peak_reserved_gb = None
     if accelerator == "cuda" and torch.cuda.is_available():
@@ -301,7 +311,8 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         "fp16": fp16,
         "bf16": bf16,
         "output_dir": str(output_dir),
-        "local_model_dir": str(local_model_dir),
+        "save_local_model": save_local_model,
+        "local_model_dir": str(local_model_dir) if save_local_model else None,
     }
 
     if push_to_hub:
