@@ -2,6 +2,28 @@
 
 This repository contains script-based replacements for the original Colab notebooks used for multilingual fine-tuning and refusal-rate evaluation. Some finetuned models can be found at [https://huggingface.co/kairawal/models](https://huggingface.co/kairawal/models).
 
+## ⚠️ WARNING: LLAMA/GEMMA FINETUNING IS CURRENTLY BROKEN IN SCRIPTS
+
+IMPORTANT STATUS:
+
+- Llama and Gemma fine-tuning are not currently working in the script pipeline.
+- Current hypothesis: `TRL` + `Unsloth` cannot reliably call into models that require non-text inputs in this workflow.
+- We need to investigate why the original Colab flow worked while equivalent script execution fails.
+
+Known failing reproduction paths:
+
+```bash
+bash scripts/run_llama3_11b_multilang_direct_pipeline.sh
+bash scripts/run_gemma3_12b_multilang_direct_pipeline.sh
+```
+
+```bash
+python scripts/mls_fine_tuning_with_templates.py --config configs/mls_fine_tuning_with_templates_gemma3_12b.json
+python scripts/mls_fine_tuning_with_templates.py --config configs/mls_fine_tuning_with_templates_llama3_11b.json
+```
+
+Until this is resolved, treat Llama/Gemma fine-tuning script runs as expected-to-fail.
+
 ## Manual Environment Setup (Required)
 
 Manual setup is required because `FastChat` and `vLLM` dependencies can conflict across environments and versions. Keep environment preparation separate from runtime execution and do not rely on runtime scripts to clone/install large external assets.
