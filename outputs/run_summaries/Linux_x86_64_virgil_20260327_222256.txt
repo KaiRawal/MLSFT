@@ -1,0 +1,81 @@
+
+
+
+
+================================================================================
+DIRECT MULTILINGUAL PIPELINE SUMMARY
+================================================================================
+Run ID: Linux_x86_64_virgil_20260327_222256
+Generated at: 2026-03-28 08:19:35
+Summary file: outputs/run_summaries/Linux_x86_64_virgil_20260327_222256.txt
+Detailed step logs: outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs
+
+Language Outcomes
+================================================================================
+  - Hindi | FINETUNE_COMPLETE | Fine-tuning and HF push completed
+  - Greek | FINETUNE_COMPLETE | Fine-tuning and HF push completed
+  - Irish | FINETUNE_COMPLETE | Fine-tuning and HF push completed
+  - Portuguese | FINETUNE_COMPLETE | Fine-tuning and HF push completed
+  - Spanish | FINETUNE_COMPLETE | Fine-tuning and HF push completed
+  - Tagalog | FINETUNE_COMPLETE | Fine-tuning and HF push completed
+  - Hindi | FAILED | Evaluation-stage hard failure(s); see outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/HI_Hindi.log
+  - Greek | FAILED | Evaluation-stage hard failure(s); see outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/EL_Greek.log
+  - Irish | FAILED | Evaluation-stage hard failure(s); see outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/GA_Irish.log
+  - Portuguese | FAILED | Evaluation-stage hard failure(s); see outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/PT_Portuguese.log
+  - Spanish | FAILED | Evaluation-stage hard failure(s); see outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/ES_Spanish.log
+  - Tagalog | FAILED | Evaluation-stage hard failure(s); see outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/TL_Tagalog.log
+
+Step Outcomes
+================================================================================
+  - Hindi | [FT 1/1] Fine-tuning | SUCCESS | Completed
+  - Greek | [FT 1/1] Fine-tuning | SUCCESS | Completed
+  - Irish | [FT 1/1] Fine-tuning | SUCCESS | Completed
+  - Portuguese | [FT 1/1] Fine-tuning | SUCCESS | Completed
+  - Spanish | [FT 1/1] Fine-tuning | SUCCESS | Completed
+  - Tagalog | [FT 1/1] Fine-tuning | SUCCESS | Completed
+  - Hindi | [EVAL 1/4] Pre-finetune English eval | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/HI_Hindi.log
+  - Hindi | [EVAL 2/4] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Hindi | [EVAL 3/4] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Hindi | [EVAL 4/4] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Greek | [EVAL 1/4] Pre-finetune English eval | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/EL_Greek.log
+  - Greek | [EVAL 2/4] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Greek | [EVAL 3/4] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Greek | [EVAL 4/4] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Irish | [EVAL 1/4] Pre-finetune English eval | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/GA_Irish.log
+  - Irish | [EVAL 2/4] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Irish | [EVAL 3/4] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Irish | [EVAL 4/4] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Portuguese | [EVAL 1/4] Pre-finetune English eval | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/PT_Portuguese.log
+  - Portuguese | [EVAL 2/4] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Portuguese | [EVAL 3/4] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Portuguese | [EVAL 4/4] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Spanish | [EVAL 1/4] Pre-finetune English eval | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/ES_Spanish.log
+  - Spanish | [EVAL 2/4] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Spanish | [EVAL 3/4] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Spanish | [EVAL 4/4] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Tagalog | [EVAL 1/4] Pre-finetune English eval | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/TL_Tagalog.log
+  - Tagalog | [EVAL 2/4] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Tagalog | [EVAL 3/4] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Tagalog | [EVAL 4/4] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+
+Hard Failures
+================================================================================
+  - Hindi | [EVAL 1/4] Pre-finetune English eval | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/HI_Hindi.log
+  - Greek | [EVAL 1/4] Pre-finetune English eval | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/EL_Greek.log
+  - Irish | [EVAL 1/4] Pre-finetune English eval | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/GA_Irish.log
+  - Portuguese | [EVAL 1/4] Pre-finetune English eval | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/PT_Portuguese.log
+  - Spanish | [EVAL 1/4] Pre-finetune English eval | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/ES_Spanish.log
+  - Tagalog | [EVAL 1/4] Pre-finetune English eval | See outputs/run_summaries/Linux_x86_64_virgil_20260327_222256_logs/TL_Tagalog.log
+
+Primary Output Directories
+================================================================================
+  - data/outputs/eval_english
+  - data/outputs/eval_translated
+  - data/outputs/fine_tuning
+
+New CSV Files Created During This Run
+================================================================================
+  - No newly created CSV files were detected under data/outputs.
+
+Final Status: FAILURE (one or more hard failures occurred)
+================================================================================
