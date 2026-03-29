@@ -4,6 +4,32 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
+RUN_PREFINETUNE_EVALS=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --run-pre-finetune-evals)
+      RUN_PREFINETUNE_EVALS=1
+      shift
+      ;;
+    -h|--help)
+      cat <<'USAGE'
+Usage: scripts/run_qwen3_32b_multilang_direct_pipeline.sh [options]
+
+Options:
+  --run-pre-finetune-evals   Run pre-finetune English and translated evals.
+  -h, --help                 Show this help message.
+USAGE
+      exit 0
+      ;;
+    *)
+      echo "Error: unknown argument: $1" >&2
+      echo "Run with --help to see available options." >&2
+      exit 1
+      ;;
+  esac
+done
+
 RUN_TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
 SYSTEM_ID="$(uname -s)_$(uname -m)_$(hostname -s 2>/dev/null || echo unknown_host)"
 SYSTEM_ID="$(echo "${SYSTEM_ID}" | tr ' /:' '___')"
@@ -180,7 +206,11 @@ fi
 echo "Current working directory: $(pwd)"
 echo "Using fixed base model: unsloth/Qwen3-32B"
 echo "Pipeline stage 1: fine-tune all languages (with HF push)"
-echo "Pipeline stage 2: run all evals (pre-English, pre-translated, post-English, post-translated)"
+if [[ "${RUN_PREFINETUNE_EVALS}" -eq 1 ]]; then
+  echo "Pipeline stage 2: run all evals (pre-English, pre-translated, post-English, post-translated)"
+else
+  echo "Pipeline stage 2: run post-finetune evals by default (pre-finetune evals skipped; use --run-pre-finetune-evals to enable)"
+fi
 
 declare -a FINETUNE_SUCCESS_LANGS=()
 declare -a FINETUNE_SKIPPED_EXISTING_LANGS=()
@@ -285,7 +315,8 @@ run_eval_stage_for_language() {
   echo ""
   echo "=== ${language} (${lang_code}) -> ${repo_name} [Evaluation Stage] ==="
 
-  if run_step "${language}" "[EVAL 1/4]" "Pre-finetune English eval" "${step_log}" python "${ENGLISH_EVAL_SCRIPT}" --config <(cat <<JSON
+  if [[ "${RUN_PREFINETUNE_EVALS}" -eq 1 ]]; then
+    if run_step "${language}" "[EVAL 1/4]" "Pre-finetune English eval" "${step_log}" python "${ENGLISH_EVAL_SCRIPT}" --config <(cat <<JSON
 {
   "model_path": "unsloth/Qwen3-32B",
   "model_id": "${preft_model_id}",
@@ -295,15 +326,19 @@ run_eval_stage_for_language() {
 }
 JSON
 ); then
-    record_step_result "${language}" "[EVAL 1/4] Pre-finetune English eval" "SUCCESS" "Completed"
+      record_step_result "${language}" "[EVAL 1/4] Pre-finetune English eval" "SUCCESS" "Completed"
+    else
+      record_step_result "${language}" "[EVAL 1/4] Pre-finetune English eval" "FAILED" "See ${step_log}"
+      record_hard_failure "${language}" "[EVAL 1/4] Pre-finetune English eval" "See ${step_log}"
+      language_hard_failure=1
+    fi
   else
-    record_step_result "${language}" "[EVAL 1/4] Pre-finetune English eval" "FAILED" "See ${step_log}"
-    record_hard_failure "${language}" "[EVAL 1/4] Pre-finetune English eval" "See ${step_log}"
-    language_hard_failure=1
+    record_step_result "${language}" "[EVAL 1/4] Pre-finetune English eval" "SKIPPED_BY_DEFAULT" "Enable with --run-pre-finetune-evals"
   fi
 
-  if [[ "${language_hard_failure}" -eq 0 ]]; then
-    if run_step "${language}" "[EVAL 2/4]" "Pre-finetune translated eval" "${step_log}" python "${TRANSLATED_EVAL_SCRIPT}" --config <(cat <<JSON
+  if [[ "${RUN_PREFINETUNE_EVALS}" -eq 1 ]]; then
+    if [[ "${language_hard_failure}" -eq 0 ]]; then
+      if run_step "${language}" "[EVAL 2/4]" "Pre-finetune translated eval" "${step_log}" python "${TRANSLATED_EVAL_SCRIPT}" --config <(cat <<JSON
 {
   "model_path": "unsloth/Qwen3-32B",
   "model_id": "${preft_model_id}",
@@ -320,14 +355,17 @@ JSON
 }
 JSON
 ); then
-      record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "SUCCESS" "Completed"
+        record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "SUCCESS" "Completed"
+      else
+        record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "FAILED" "See ${step_log}"
+        record_hard_failure "${language}" "[EVAL 2/4] Pre-finetune translated eval" "See ${step_log}"
+        language_hard_failure=1
+      fi
     else
-      record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "FAILED" "See ${step_log}"
-      record_hard_failure "${language}" "[EVAL 2/4] Pre-finetune translated eval" "See ${step_log}"
-      language_hard_failure=1
+      record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "SKIPPED" "Blocked by earlier failure"
     fi
   else
-    record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "SKIPPED" "Blocked by earlier failure"
+    record_step_result "${language}" "[EVAL 2/4] Pre-finetune translated eval" "SKIPPED_BY_DEFAULT" "Enable with --run-pre-finetune-evals"
   fi
 
   if array_contains "${lang_code}" "${FINETUNE_FAILED_LANGS[@]}"; then
