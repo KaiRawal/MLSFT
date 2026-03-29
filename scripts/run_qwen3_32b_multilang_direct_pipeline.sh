@@ -438,26 +438,26 @@ JSON
 }
 
 LANGUAGE_RUNS=(
-  "Hindi|HI|hin_Deva"
-  "Danish|DA|dan_Latn"
+  #"Hindi|HI|hin_Deva"
+  #"Danish|DA|dan_Latn"
   "Chinese|ZH|zho_Hans"
-  "Greek|EL|ell_Grek"
-  "Irish|GA|gle_Latn"
-  "Portuguese|PT|por_Latn"
-  "Spanish|ES|spa_Latn"
-  "Tagalog|TL|tgl_Latn"
+  #"Greek|EL|ell_Grek"
+  #"Irish|GA|gle_Latn"
+  #"Portuguese|PT|por_Latn"
+  #"Spanish|ES|spa_Latn"
+  #"Tagalog|TL|tgl_Latn"
 )
 
 overall_exit_code=0
 
 echo ""
 echo "=== Stage 1/2: Fine-tuning all languages ==="
-#for run in "${LANGUAGE_RUNS[@]}"; do
-#  IFS='|' read -r language lang_code source_lang_code <<< "${run}"
-#  if ! run_finetune_stage_for_language "${language}" "${lang_code}"; then
-#    overall_exit_code=1
-#  fi
-#done
+for run in "${LANGUAGE_RUNS[@]}"; do
+  IFS='|' read -r language lang_code source_lang_code <<< "${run}"
+  if ! run_finetune_stage_for_language "${language}" "${lang_code}"; then
+    overall_exit_code=1
+  fi
+done
 
 echo ""
 echo "=== Stage 2/2: Running evaluations for all languages ==="

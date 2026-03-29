@@ -1,0 +1,39 @@
+
+
+
+
+================================================================================
+DIRECT MULTILINGUAL PIPELINE SUMMARY
+================================================================================
+Run ID: Linux_x86_64_virgil_20260329_070306
+Generated at: 2026-03-29 07:11:37
+Summary file: outputs/run_summaries/Linux_x86_64_virgil_20260329_070306.txt
+Detailed step logs: outputs/run_summaries/Linux_x86_64_virgil_20260329_070306_logs
+
+Language Outcomes
+================================================================================
+  - Chinese | FAILED | Evaluation-stage hard failure(s); see outputs/run_summaries/Linux_x86_64_virgil_20260329_070306_logs/ZH_Chinese.log
+
+Step Outcomes
+================================================================================
+  - Chinese | [EVAL 1/4] Pre-finetune English eval | SUCCESS | Completed
+  - Chinese | [EVAL 2/4] Pre-finetune translated eval | SUCCESS | Completed
+  - Chinese | [EVAL 3/4] Post-finetune English eval (HF model) | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260329_070306_logs/ZH_Chinese.log
+  - Chinese | [EVAL 4/4] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+
+Hard Failures
+================================================================================
+  - Chinese | [EVAL 3/4] Post-finetune English eval (HF model) | See outputs/run_summaries/Linux_x86_64_virgil_20260329_070306_logs/ZH_Chinese.log
+
+Primary Output Directories
+================================================================================
+  - data/outputs/eval_english
+  - data/outputs/eval_translated
+  - data/outputs/fine_tuning
+
+New CSV Files Created During This Run
+================================================================================
+  - No newly created CSV files were detected under data/outputs.
+
+Final Status: FAILURE (one or more hard failures occurred)
+================================================================================
