@@ -29,6 +29,7 @@ import copy
 import gc
 import json
 import os
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -65,6 +66,45 @@ def resolve_dtype(accelerator: str) -> str:
             return "bfloat16"
         return "float16"
     return "float32"
+
+
+def get_optional_config_str(config: dict[str, Any], key: str) -> str | None:
+    value = config.get(key)
+    if value is None:
+        return None
+    value_str = str(value).strip()
+    return value_str or None
+
+
+def resolve_generation_model_id(config: dict[str, Any]) -> str:
+    return get_optional_config_str(config, "generation_model_id_for_template") or str(config["model_id"])
+
+
+def resolve_generation_revision(config: dict[str, Any]) -> str | None:
+    return get_optional_config_str(config, "generation_revision")
+
+
+def resolve_generation_dtype(config: dict[str, Any], accelerator: str) -> str:
+    configured = get_optional_config_str(config, "generation_dtype")
+    if not configured:
+        return resolve_dtype(accelerator)
+
+    supported = {"float16", "bfloat16", "float32"}
+    normalized = configured.lower()
+    if normalized not in supported:
+        raise ValueError(
+            f"Unsupported generation_dtype={configured!r}. Use one of: {sorted(supported)}"
+        )
+    return normalized
+
+
+def warn_unsupported_generation_tokenizer(config: dict[str, Any]) -> None:
+    tokenizer_override = get_optional_config_str(config, "generation_tokenizer")
+    if tokenizer_override:
+        print(
+            "Warning: generation_tokenizer is not supported by external/sorry-bench generation entrypoints; "
+            "it will be ignored. Use model_path that already contains the intended tokenizer assets."
+        )
 
 
 def resolve_ct2_device(accelerator: str) -> str:
@@ -266,11 +306,20 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     translated_dir.mkdir(parents=True, exist_ok=True)
     judgment_dir.mkdir(parents=True, exist_ok=True)
     accelerator = detect_accelerator()
-    generation_dtype = resolve_dtype(accelerator)
+    generation_dtype = resolve_generation_dtype(config, accelerator)
     model_path = resolve_model_path(config)
     generation_backend = resolve_generation_backend(config, model_path)
+    generation_model_id = resolve_generation_model_id(config)
+    generation_revision = resolve_generation_revision(config)
+
+    warn_unsupported_generation_tokenizer(config)
 
     print(f"Using generation backend: {generation_backend}")
+    if generation_model_id != str(config["model_id"]):
+        print(
+            "Using generation_model_id_for_template override: "
+            f"{generation_model_id} (logical output model_id remains {config['model_id']})"
+        )
 
     ensure_exists(sorry_bench_dir, "sorry_bench_dir")
     ensure_exists(nllb_ct2_dir, "nllb_ct2_dir")
@@ -282,6 +331,9 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     copy_overwrite_loud(Path(config["english_prompt_jsonl"]), english_question_jsonl, "English question JSONL")
 
     answer_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
+    generated_answer_path = (
+        sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{generation_model_id}.jsonl"
+    )
     stripped_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_stripped.jsonl"
     translated_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_translated.jsonl"
     autorater_generic = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
@@ -291,26 +343,57 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
 
     # Sorry-bench generation/judgment scripts append by default; clear per-run artifacts to force fresh eval.
     overwrite_loud(answer_path, "sorry-bench model answer cache")
+    if generated_answer_path != answer_path:
+        overwrite_loud(generated_answer_path, "sorry-bench model answer cache (template model id override)")
     overwrite_loud(stripped_path, "sorry-bench stripped model answer cache")
     overwrite_loud(translated_path, "sorry-bench translated model answer cache")
     overwrite_loud(autorater_generic, "sorry-bench model judgment cache")
     overwrite_loud(autorater_target, "sorry-bench translated model judgment cache")
 
     if generation_backend == "vllm":
-        run_cmd(
-            "python gen_model_answer_vllm.py "
-            f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype} "
-            "--num-gpus-per-model 2 --num-gpus-total 2",
-            cwd=sorry_bench_dir,
-        )
+        cmd = [
+            "python",
+            "gen_model_answer_vllm.py",
+            "--bench-name",
+            "sorry_bench",
+            "--model-path",
+            model_path,
+            "--model-id",
+            generation_model_id,
+            "--dtype",
+            generation_dtype,
+            "--num-gpus-per-model",
+            "2",
+            "--num-gpus-total",
+            "2",
+        ]
+        if generation_revision:
+            cmd.extend(["--revision", generation_revision])
+        run_cmd(shlex.join(cmd), cwd=sorry_bench_dir)
     else:
-        run_cmd(
-            "python gen_model_answer.py "
-            f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype} "
-            "--num-gpus-per-model 1 --num-gpus-total 1",
-            cwd=sorry_bench_dir,
-        )
+        cmd = [
+            "python",
+            "gen_model_answer.py",
+            "--bench-name",
+            "sorry_bench",
+            "--model-path",
+            model_path,
+            "--model-id",
+            generation_model_id,
+            "--dtype",
+            generation_dtype,
+            "--num-gpus-per-model",
+            "1",
+            "--num-gpus-total",
+            "1",
+        ]
+        if generation_revision:
+            cmd.extend(["--revision", generation_revision])
+        run_cmd(shlex.join(cmd), cwd=sorry_bench_dir)
 
+    ensure_exists(generated_answer_path, "generated model answer jsonl")
+    if generated_answer_path != answer_path:
+        copy_overwrite_loud(generated_answer_path, answer_path, "normalized model answer jsonl")
     ensure_exists(answer_path, "model answer jsonl")
 
     backup_answer_path = answer_path.with_stem(f"{answer_path.stem}_backup")
