@@ -139,6 +139,25 @@ def resolve_model_path(config: dict[str, Any]) -> str:
     return f"{hf_user}/{model_id}"
 
 
+def resolve_generation_backend(config: dict[str, Any], model_path: str) -> str:
+    configured = str(config.get("generation_backend", "")).strip().lower()
+    if configured:
+        if configured not in {"vllm", "fastchat"}:
+            raise ValueError(
+                f"Unsupported generation_backend={configured!r}. Use 'vllm' or 'fastchat'."
+            )
+        return configured
+
+    model_path_lower = model_path.lower()
+    model_id_lower = str(config.get("model_id", "")).lower()
+
+    # vLLM + older transformers stacks may fail on ministral3 configs.
+    if "ministral-3" in model_path_lower or "ministral-3" in model_id_lower:
+        return "fastchat"
+
+    return "vllm"
+
+
 def to_jsonl_from_prompt_csv(input_csv: Path, output_jsonl: Path) -> None:
     df = pd.read_csv(input_csv)
     if "turns" not in df.columns:
@@ -249,6 +268,9 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     accelerator = detect_accelerator()
     generation_dtype = resolve_dtype(accelerator)
     model_path = resolve_model_path(config)
+    generation_backend = resolve_generation_backend(config, model_path)
+
+    print(f"Using generation backend: {generation_backend}")
 
     ensure_exists(sorry_bench_dir, "sorry_bench_dir")
     ensure_exists(nllb_ct2_dir, "nllb_ct2_dir")
@@ -274,12 +296,20 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     overwrite_loud(autorater_generic, "sorry-bench model judgment cache")
     overwrite_loud(autorater_target, "sorry-bench translated model judgment cache")
 
-    run_cmd(
-        "python gen_model_answer_vllm.py "
-        f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype} "
-        "--num-gpus-per-model 2 --num-gpus-total 2",
-        cwd=sorry_bench_dir,
-    )
+    if generation_backend == "vllm":
+        run_cmd(
+            "python gen_model_answer_vllm.py "
+            f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype} "
+            "--num-gpus-per-model 2 --num-gpus-total 2",
+            cwd=sorry_bench_dir,
+        )
+    else:
+        run_cmd(
+            "python gen_model_answer.py "
+            f"--bench-name sorry_bench --model-path {model_path} --model-id {config['model_id']} --dtype {generation_dtype} "
+            "--num-gpus-per-model 1 --num-gpus-total 1",
+            cwd=sorry_bench_dir,
+        )
 
     ensure_exists(answer_path, "model answer jsonl")
 
