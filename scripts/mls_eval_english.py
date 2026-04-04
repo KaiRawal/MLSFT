@@ -32,6 +32,8 @@ from typing import Any
 import pandas as pd
 import torch
 
+from gpu_selection import resolve_generation_gpu_count
+
 
 def load_config(config_path: str) -> dict[str, Any]:
     with open(config_path, "r", encoding="utf-8") as f:
@@ -265,6 +267,7 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     generation_backend = resolve_generation_backend(config, model_path)
     output_model_id = resolve_output_model_id(config)
     generation_model_id = resolve_generation_model_id(config, output_model_id)
+    generation_gpu_count = resolve_generation_gpu_count(model_path, generation_model_id)
     generation_revision = resolve_generation_revision(config)
 
     warn_unsupported_generation_tokenizer(config)
@@ -302,9 +305,9 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
             "--dtype",
             generation_dtype,
             "--num-gpus-per-model",
-            "2",
+            str(generation_gpu_count),
             "--num-gpus-total",
-            "2",
+            str(generation_gpu_count),
         ]
         if generation_revision:
             cmd.extend(["--revision", generation_revision])
@@ -322,9 +325,9 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
             "--dtype",
             generation_dtype,
             "--num-gpus-per-model",
-            "1",
+            str(generation_gpu_count),
             "--num-gpus-total",
-            "1",
+            str(generation_gpu_count),
         ]
         if generation_revision:
             cmd.extend(["--revision", generation_revision])
