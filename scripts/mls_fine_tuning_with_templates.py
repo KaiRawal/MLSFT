@@ -57,6 +57,22 @@ def detect_accelerator() -> str:
     return "cpu"
 
 
+def get_optional_config_str(config: dict[str, Any], key: str) -> str | None:
+    value = config.get(key)
+    if value is None:
+        return None
+    value_str = str(value).strip()
+    return value_str or None
+
+
+def append_epoch_tag(identifier: str, epoch_tag: str | None) -> str:
+    if not epoch_tag:
+        return identifier
+    if identifier.endswith(epoch_tag) or f"-{epoch_tag}" in identifier:
+        return identifier
+    return f"{identifier}-{epoch_tag}"
+
+
 def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, bool]:
     if "fp16" in config:
         fp16 = bool(config["fp16"])
@@ -133,8 +149,8 @@ def build_dataset(
     return dataset, template_name
 
 
-def resolve_hf_push_target(config: dict[str, Any]) -> tuple[str, str, str]:
-    hf_repo = config.get("hf_repo")
+def resolve_hf_push_target(config: dict[str, Any], epoch_tag: str | None) -> tuple[str, str, str]:
+    hf_repo = get_optional_config_str(config, "hf_repo")
     hf_user = (os.environ.get("HF_USER") or "").strip()
     hf_token = (config.get("hf_token") or os.environ.get("HF_TOKEN") or "").strip()
     if not hf_repo or not hf_user or not hf_token:
@@ -143,6 +159,7 @@ def resolve_hf_push_target(config: dict[str, Any]) -> tuple[str, str, str]:
             "(or hf_token in config)"
         )
 
+    hf_repo = append_epoch_tag(hf_repo, epoch_tag)
     full_repo_id = hf_repo if "/" in hf_repo else f"{hf_user}/{hf_repo}"
     return hf_repo, full_repo_id, hf_token
 
@@ -171,6 +188,7 @@ def enforce_existing_repo_policy(full_repo_id: str, hf_token: str, allow_existin
 
 
 def run_training(config: dict[str, Any]) -> dict[str, Any]:
+    epoch_tag = get_optional_config_str(config, "epoch_tag")
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
     save_local_model = bool(config.get("save_local_model", False))
@@ -190,7 +208,7 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     full_repo_id = ""
     hf_token = ""
     if push_to_hub:
-        _, full_repo_id, hf_token = resolve_hf_push_target(config)
+        _, full_repo_id, hf_token = resolve_hf_push_target(config, epoch_tag)
         enforce_existing_repo_policy(
             full_repo_id=full_repo_id,
             hf_token=hf_token,
@@ -300,7 +318,8 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
 
     summary = {
         "model_name": config["model_name"],
-        "model_id": config["model_id"],
+        "model_id": append_epoch_tag(str(config["model_id"]), epoch_tag),
+        "epoch_tag": epoch_tag,
         "language": config["language"],
         "random_seed": int(config["random_seed"]),
         "num_train_epochs": int(config.get("num_train_epochs", 1)),

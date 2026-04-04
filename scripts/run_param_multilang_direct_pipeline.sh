@@ -40,6 +40,8 @@ if awk 'BEGIN{exit ARGV[1] <= 0 ? 0 : 1}' "${NUM_TRAIN_EPOCHS}"; then
   exit 1
 fi
 
+EPOCH_TAG="E${NUM_TRAIN_EPOCHS//./p}"
+
 BASE_MODEL_PATH=""
 FINETUNE_TEMPLATE_NAME=""
 MODEL_NAME_PREFIX=""
@@ -170,6 +172,7 @@ print_and_save_summary() {
     echo "Detailed step logs: ${LOG_DIR}"
     echo "Base model: ${BASE_MODEL_PATH}"
     echo "Train epochs: ${NUM_TRAIN_EPOCHS}"
+    echo "Epoch tag: ${EPOCH_TAG}"
     echo ""
     echo "Language Outcomes"
     echo "${border}"
@@ -261,6 +264,7 @@ echo "Current working directory: $(pwd)"
 echo "Using base model: ${BASE_MODEL_PATH}"
 echo "Using fine-tune template: ${FINETUNE_TEMPLATE_NAME}"
 echo "Using train epochs: ${NUM_TRAIN_EPOCHS}"
+echo "Using epoch tag: ${EPOCH_TAG}"
 echo "Pipeline per language: fine-tune -> post-English eval -> post-translated eval -> pre-English eval -> pre-translated eval"
 
 run_language_pipeline() {
@@ -268,7 +272,7 @@ run_language_pipeline() {
   local lang_code="$2"
   local source_lang_code="$3"
 
-  local repo_name="${MODEL_NAME_PREFIX}-${lang_code}-SynthDolly-1A"
+  local repo_name="${MODEL_NAME_PREFIX}-${lang_code}-SynthDolly-1A-${EPOCH_TAG}"
   local preft_model_id="${repo_name}-PREFT"
   local full_repo_id="${HF_USER}/${repo_name}"
   local expected_existing_msg="Target Hugging Face repo already exists: ${full_repo_id}. Set allow_existing_hf_repo=true to permit re-training and overwriting."
@@ -291,6 +295,7 @@ run_language_pipeline() {
   "model_id": "${repo_name}",
   "random_seed": 3407,
   "template_name": "${FINETUNE_TEMPLATE_NAME}",
+  "epoch_tag": "${EPOCH_TAG}",
   "input_csv": "data/inputs/fine_tuning/MLS - Fine-Tuning Data - ${language} - Sheet1.csv",
   "output_dir": "data/outputs/fine_tuning/${repo_name}",
   "local_model_dir": "data/outputs/fine_tuning/${repo_name}/model_merged",
@@ -322,6 +327,7 @@ JSON
 {
   "model_path": "${repo_name}",
   "model_id": "${repo_name}",
+  "epoch_tag": "${EPOCH_TAG}",
   "sorry_bench_dir": "external/sorry-bench",
   "english_questions_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
   "output_dir": "data/outputs/eval_english"
@@ -343,6 +349,7 @@ JSON
 {
   "model_path": "${repo_name}",
   "model_id": "${repo_name}",
+  "epoch_tag": "${EPOCH_TAG}",
   "language_code": "${lang_code}",
   "source_lang_code": "${source_lang_code}",
   "local_prompt_csv": "data/inputs/eval_prompts/MLSFT - ${language} Evaluation Prompts  - Sheet1.csv",
@@ -371,6 +378,7 @@ JSON
 {
   "model_path": "${BASE_MODEL_PATH}",
   "model_id": "${preft_model_id}",
+  "epoch_tag": "${EPOCH_TAG}",
   "sorry_bench_dir": "external/sorry-bench",
   "english_questions_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
   "output_dir": "data/outputs/eval_english"
@@ -392,6 +400,7 @@ JSON
 {
   "model_path": "${BASE_MODEL_PATH}",
   "model_id": "${preft_model_id}",
+  "epoch_tag": "${EPOCH_TAG}",
   "language_code": "${lang_code}",
   "source_lang_code": "${source_lang_code}",
   "local_prompt_csv": "data/inputs/eval_prompts/MLSFT - ${language} Evaluation Prompts  - Sheet1.csv",

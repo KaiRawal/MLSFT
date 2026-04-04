@@ -68,8 +68,21 @@ def get_optional_config_str(config: dict[str, Any], key: str) -> str | None:
     return value_str or None
 
 
-def resolve_generation_model_id(config: dict[str, Any]) -> str:
-    return get_optional_config_str(config, "generation_model_id_for_template") or str(config["model_id"])
+def append_epoch_tag(identifier: str, epoch_tag: str | None) -> str:
+    if not epoch_tag:
+        return identifier
+    if identifier.endswith(epoch_tag) or f"-{epoch_tag}" in identifier:
+        return identifier
+    return f"{identifier}-{epoch_tag}"
+
+
+def resolve_output_model_id(config: dict[str, Any]) -> str:
+    epoch_tag = get_optional_config_str(config, "epoch_tag")
+    return append_epoch_tag(str(config["model_id"]), epoch_tag)
+
+
+def resolve_generation_model_id(config: dict[str, Any], output_model_id: str) -> str:
+    return get_optional_config_str(config, "generation_model_id_for_template") or output_model_id
 
 
 def resolve_generation_revision(config: dict[str, Any]) -> str | None:
@@ -250,21 +263,22 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     generation_dtype = resolve_generation_dtype(config, accelerator)
     model_path = resolve_model_path(config)
     generation_backend = resolve_generation_backend(config, model_path)
-    generation_model_id = resolve_generation_model_id(config)
+    output_model_id = resolve_output_model_id(config)
+    generation_model_id = resolve_generation_model_id(config, output_model_id)
     generation_revision = resolve_generation_revision(config)
 
     warn_unsupported_generation_tokenizer(config)
 
     print(f"Using generation backend: {generation_backend}")
-    if generation_model_id != str(config["model_id"]):
+    if generation_model_id != output_model_id:
         print(
             "Using generation_model_id_for_template override: "
-            f"{generation_model_id} (logical output model_id remains {config['model_id']})"
+            f"{generation_model_id} (logical output model_id remains {output_model_id})"
         )
 
     prepare_questions_file(config, sorry_bench_dir)
 
-    model_answer = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
+    model_answer = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{output_model_id}.jsonl"
     generated_model_answer = (
         sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{generation_model_id}.jsonl"
     )
@@ -325,7 +339,7 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     backup_model_answer = remove_thinking_tokens(model_answer)
 
     run_cmd(
-        f"python gen_judgment_safety_vllm.py --model-list {config['model_id']}",
+        f"python gen_judgment_safety_vllm.py --model-list {output_model_id}",
         cwd=sorry_bench_dir,
     )
     ensure_exists(model_judgment, "model judgment file")
@@ -340,11 +354,11 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     backup_dir.mkdir(parents=True, exist_ok=True)
     judgment_dir.mkdir(parents=True, exist_ok=True)
 
-    copied_answer = answer_dir / f"{config['model_id']}_model_answer.jsonl"
-    copied_backup = backup_dir / f"{config['model_id']}_model_answer_backup.jsonl"
-    copied_judgment = judgment_dir / f"{config['model_id']}_model_judgment.jsonl"
-    merged_csv = output_dir / f"{config['model_id']}_english_results.csv"
-    detailed_csv = output_dir / f"{config['model_id']}_english_results_detailed.csv"
+    copied_answer = answer_dir / f"{output_model_id}_model_answer.jsonl"
+    copied_backup = backup_dir / f"{output_model_id}_model_answer_backup.jsonl"
+    copied_judgment = judgment_dir / f"{output_model_id}_model_judgment.jsonl"
+    merged_csv = output_dir / f"{output_model_id}_english_results.csv"
+    detailed_csv = output_dir / f"{output_model_id}_english_results_detailed.csv"
 
     copy_overwrite_loud(model_answer, copied_answer, "output stripped model answer")
     copy_overwrite_loud(backup_model_answer, copied_backup, "output raw model answer backup")

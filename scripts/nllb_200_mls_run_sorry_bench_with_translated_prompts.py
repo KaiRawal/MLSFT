@@ -76,8 +76,21 @@ def get_optional_config_str(config: dict[str, Any], key: str) -> str | None:
     return value_str or None
 
 
-def resolve_generation_model_id(config: dict[str, Any]) -> str:
-    return get_optional_config_str(config, "generation_model_id_for_template") or str(config["model_id"])
+def append_epoch_tag(identifier: str, epoch_tag: str | None) -> str:
+    if not epoch_tag:
+        return identifier
+    if identifier.endswith(epoch_tag) or f"-{epoch_tag}" in identifier:
+        return identifier
+    return f"{identifier}-{epoch_tag}"
+
+
+def resolve_output_model_id(config: dict[str, Any]) -> str:
+    epoch_tag = get_optional_config_str(config, "epoch_tag")
+    return append_epoch_tag(str(config["model_id"]), epoch_tag)
+
+
+def resolve_generation_model_id(config: dict[str, Any], output_model_id: str) -> str:
+    return get_optional_config_str(config, "generation_model_id_for_template") or output_model_id
 
 
 def resolve_generation_revision(config: dict[str, Any]) -> str | None:
@@ -309,16 +322,17 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     generation_dtype = resolve_generation_dtype(config, accelerator)
     model_path = resolve_model_path(config)
     generation_backend = resolve_generation_backend(config, model_path)
-    generation_model_id = resolve_generation_model_id(config)
+    output_model_id = resolve_output_model_id(config)
+    generation_model_id = resolve_generation_model_id(config, output_model_id)
     generation_revision = resolve_generation_revision(config)
 
     warn_unsupported_generation_tokenizer(config)
 
     print(f"Using generation backend: {generation_backend}")
-    if generation_model_id != str(config["model_id"]):
+    if generation_model_id != output_model_id:
         print(
             "Using generation_model_id_for_template override: "
-            f"{generation_model_id} (logical output model_id remains {config['model_id']})"
+            f"{generation_model_id} (logical output model_id remains {output_model_id})"
         )
 
     ensure_exists(sorry_bench_dir, "sorry_bench_dir")
@@ -330,15 +344,15 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     to_jsonl_from_prompt_csv(Path(config["local_prompt_csv"]), local_question_jsonl)
     copy_overwrite_loud(Path(config["english_prompt_jsonl"]), english_question_jsonl, "English question JSONL")
 
-    answer_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}.jsonl"
+    answer_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{output_model_id}.jsonl"
     generated_answer_path = (
         sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{generation_model_id}.jsonl"
     )
-    stripped_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_stripped.jsonl"
-    translated_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{config['model_id']}_translated.jsonl"
+    stripped_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{output_model_id}_stripped.jsonl"
+    translated_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{output_model_id}_translated.jsonl"
     autorater_generic = sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / "ft-mistral-7b-instruct-v0.2.jsonl"
     autorater_target = (
-        sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / f"{config['model_id']}_ft-mistral-7b-instruct-v0.2.jsonl"
+        sorry_bench_dir / "data" / "sorry_bench" / "model_judgment" / f"{output_model_id}_ft-mistral-7b-instruct-v0.2.jsonl"
     )
 
     # Sorry-bench generation/judgment scripts append by default; clear per-run artifacts to force fresh eval.
@@ -451,7 +465,7 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
 
     try:
         run_cmd(
-            f"python gen_judgment_safety_vllm.py --model-list {config['model_id']}_translated",
+            f"python gen_judgment_safety_vllm.py --model-list {output_model_id}_translated",
             cwd=sorry_bench_dir,
         )
     finally:
@@ -479,12 +493,12 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
             }
         )
 
-    backup_copy = backup_dir / f"{config['model_id']}_model_answer_backup.jsonl"
-    stripped_copy = stripped_dir / f"{config['model_id']}_stripped_local_answers.jsonl"
-    translated_copy = translated_dir / f"{config['model_id']}_translated_answers.jsonl"
-    judgment_copy = judgment_dir / f"{config['model_id']}_translated_judgment.jsonl"
-    merged_csv = output_dir / f"{config['model_id']}_{config['language_code']}_translated_eval.csv"
-    detailed_csv = output_dir / f"{config['model_id']}_{config['language_code']}_translated_eval_detailed.csv"
+    backup_copy = backup_dir / f"{output_model_id}_model_answer_backup.jsonl"
+    stripped_copy = stripped_dir / f"{output_model_id}_stripped_local_answers.jsonl"
+    translated_copy = translated_dir / f"{output_model_id}_translated_answers.jsonl"
+    judgment_copy = judgment_dir / f"{output_model_id}_translated_judgment.jsonl"
+    merged_csv = output_dir / f"{output_model_id}_{config['language_code']}_translated_eval.csv"
+    detailed_csv = output_dir / f"{output_model_id}_{config['language_code']}_translated_eval_detailed.csv"
 
     copy_overwrite_loud(backup_answer_path, backup_copy, "output raw model answer backup")
     copy_overwrite_loud(stripped_path, stripped_copy, "output stripped local answers")
