@@ -127,8 +127,8 @@ def build_dataset(
             tokenize=False,
             add_generation_prompt=False,
         )
-        if 'llama' in template_name or 'gemma' in template_name:
-            return {"messages": messages}
+        # if 'llama' in template_name or 'gemma' in template_name:
+        #     return {"messages": messages}
         return {"text": text}
 
     dataset = dataset.map(format_to_messages)
@@ -142,8 +142,8 @@ def build_dataset(
             max_length=max_seq_length,
         )
 
-    if 'llama' in template_name or 'gemma' in template_name:
-        dataset = dataset.map(tokenize_function, batched=True)
+    # if 'llama' in template_name or 'gemma' in template_name:
+    #     dataset = dataset.map(tokenize_function, batched=True)
     print(f"Using chat template: {template_name}")
     print("Example formatted prompt:\n", dataset[0])
     return dataset, template_name
