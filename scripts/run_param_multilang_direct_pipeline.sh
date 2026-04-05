@@ -302,8 +302,8 @@ run_language_pipeline() {
   "summary_json": "data/outputs/fine_tuning/${repo_name}/train_summary.json",
   "num_train_epochs": ${NUM_TRAIN_EPOCHS},
   "learning_rate": 5e-5,
-  "per_device_train_batch_size": 2,
-  "gradient_accumulation_steps": 4,
+  "per_device_train_batch_size": 16,
+  "gradient_accumulation_steps": 2,
   "push_to_hub": true,
   "allow_existing_hf_repo": false,
   "hf_repo": "${repo_name}"
@@ -315,11 +315,20 @@ JSON
     if grep -Fq "${expected_existing_msg}" "${step_log}"; then
       skipped_existing_model=1
       record_step_result "${language}" "[1/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Existing HF model reused"
+      record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED" "Finetuned model already existed"
+      record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED" "Finetuned model already existed"
+      record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED" "Finetuned model already existed"
+      record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED" "Finetuned model already existed"
     else
       record_step_result "${language}" "[1/5] Fine-tuning" "FAILED" "See ${step_log}"
       record_hard_failure "${language}" "[1/5] Fine-tuning" "See ${step_log}"
       language_hard_failure=1
     fi
+  fi
+
+  if [[ "${skipped_existing_model}" -eq 1 ]]; then
+    record_language_result "${language}" "SKIPPED_EXISTING_MODEL" "Fine-tune skipped because model already existed; all evals skipped"
+    return 0
   fi
 
   if [[ "${language_hard_failure}" -eq 0 ]]; then

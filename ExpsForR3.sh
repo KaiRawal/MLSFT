@@ -10,8 +10,8 @@ bash scripts/run_param_multilang_direct_pipeline.sh unsloth/qwen3-4b 8
 
 bash scripts/run_param_multilang_direct_pipeline.sh unsloth/llama-3.2-1b-Instruct 5
 bash scripts/run_param_multilang_direct_pipeline.sh unsloth/llama-3.2-1b-Instruct 8
-bash scripts/run_param_multilang_direct_pipeline.sh unsloth/llama3.2-3b-Instruct 5
-bash scripts/run_param_multilang_direct_pipeline.sh unsloth/llama3.2-3b-Instruct 8
+bash scripts/run_param_multilang_direct_pipeline.sh unsloth/llama-3.2-3b-Instruct 5
+bash scripts/run_param_multilang_direct_pipeline.sh unsloth/llama-3.2-3b-Instruct 8
 
 
 
