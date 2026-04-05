@@ -1,0 +1,98 @@
+
+
+
+
+================================================================================
+DIRECT MULTILINGUAL PIPELINE SUMMARY
+================================================================================
+Run ID: Linux_x86_64_virgil_20260405_030813
+Generated at: 2026-04-05 04:15:26
+Summary file: outputs/run_summaries/Linux_x86_64_virgil_20260405_030813.txt
+Detailed step logs: outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs
+Base model: unsloth/qwen3-4b
+Train epochs: 5
+Epoch tag: E5
+
+Language Outcomes
+================================================================================
+  - Hindi | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/HI_Hindi.log
+  - Danish | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/DA_Danish.log
+  - Chinese | SUCCESS | All steps completed
+  - Greek | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/EL_Greek.log
+  - Irish | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/GA_Irish.log
+  - Portuguese | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/PT_Portuguese.log
+  - Spanish | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/ES_Spanish.log
+  - Tagalog | FAILED | One or more hard failures; see outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/TL_Tagalog.log
+
+Step Outcomes
+================================================================================
+  - Hindi | [1/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/HI_Hindi.log
+  - Hindi | [2/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Hindi | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Hindi | [4/5] Pre-finetune English eval | SKIPPED | Blocked by earlier failure
+  - Hindi | [5/5] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Danish | [1/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/DA_Danish.log
+  - Danish | [2/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Danish | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Danish | [4/5] Pre-finetune English eval | SKIPPED | Blocked by earlier failure
+  - Danish | [5/5] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Chinese | [1/5] Fine-tuning | SUCCESS | Completed
+  - Chinese | [2/5] Post-finetune English eval (HF model) | SUCCESS | Completed
+  - Chinese | [3/5] Post-finetune translated eval (HF model) | SUCCESS | Completed
+  - Chinese | [4/5] Pre-finetune English eval | SUCCESS | Completed
+  - Chinese | [5/5] Pre-finetune translated eval | SUCCESS | Completed
+  - Greek | [1/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/EL_Greek.log
+  - Greek | [2/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Greek | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Greek | [4/5] Pre-finetune English eval | SKIPPED | Blocked by earlier failure
+  - Greek | [5/5] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Irish | [1/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/GA_Irish.log
+  - Irish | [2/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Irish | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Irish | [4/5] Pre-finetune English eval | SKIPPED | Blocked by earlier failure
+  - Irish | [5/5] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Portuguese | [1/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/PT_Portuguese.log
+  - Portuguese | [2/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Portuguese | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Portuguese | [4/5] Pre-finetune English eval | SKIPPED | Blocked by earlier failure
+  - Portuguese | [5/5] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Spanish | [1/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/ES_Spanish.log
+  - Spanish | [2/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Spanish | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Spanish | [4/5] Pre-finetune English eval | SKIPPED | Blocked by earlier failure
+  - Spanish | [5/5] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+  - Tagalog | [1/5] Fine-tuning | FAILED | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/TL_Tagalog.log
+  - Tagalog | [2/5] Post-finetune English eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Tagalog | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Blocked by earlier failure
+  - Tagalog | [4/5] Pre-finetune English eval | SKIPPED | Blocked by earlier failure
+  - Tagalog | [5/5] Pre-finetune translated eval | SKIPPED | Blocked by earlier failure
+
+Hard Failures
+================================================================================
+  - Hindi | [1/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/HI_Hindi.log
+  - Danish | [1/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/DA_Danish.log
+  - Greek | [1/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/EL_Greek.log
+  - Irish | [1/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/GA_Irish.log
+  - Portuguese | [1/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/PT_Portuguese.log
+  - Spanish | [1/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/ES_Spanish.log
+  - Tagalog | [1/5] Fine-tuning | See outputs/run_summaries/Linux_x86_64_virgil_20260405_030813_logs/TL_Tagalog.log
+
+Primary Output Directories
+================================================================================
+  - data/outputs/eval_english
+  - data/outputs/eval_translated
+  - data/outputs/fine_tuning
+
+New CSV Files Created During This Run
+================================================================================
+  - data/outputs/eval_english/Qwen3-4B-ZH-SynthDolly-1A-E5_english_results.csv
+  - data/outputs/eval_english/Qwen3-4B-ZH-SynthDolly-1A-E5_english_results_detailed.csv
+  - data/outputs/eval_english/Qwen3-4B-ZH-SynthDolly-1A-E5-PREFT_english_results.csv
+  - data/outputs/eval_english/Qwen3-4B-ZH-SynthDolly-1A-E5-PREFT_english_results_detailed.csv
+  - data/outputs/eval_translated/Qwen3-4B-ZH-SynthDolly-1A-E5-PREFT_ZH_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-4B-ZH-SynthDolly-1A-E5-PREFT_ZH_translated_eval_detailed.csv
+  - data/outputs/eval_translated/Qwen3-4B-ZH-SynthDolly-1A-E5_ZH_translated_eval.csv
+  - data/outputs/eval_translated/Qwen3-4B-ZH-SynthDolly-1A-E5_ZH_translated_eval_detailed.csv
+
+Final Status: FAILURE (one or more hard failures occurred)
+================================================================================
