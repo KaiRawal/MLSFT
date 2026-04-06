@@ -98,6 +98,20 @@ def precision_flags(config: dict[str, Any], accelerator: str) -> tuple[bool, boo
     return fp16, bf16
 
 
+def ensure_text_tokenizer(tokenizer_or_processor: Any) -> Any:
+    """Normalize multimodal processor objects to a plain text tokenizer.
+
+    Some checkpoints (for example Gemma-3 4B) can expose a Processor-like
+    object with a nested `.tokenizer`. For text-only SFT we must use the
+    underlying tokenizer so TRL stays on the text training path.
+    """
+    nested_tokenizer = getattr(tokenizer_or_processor, "tokenizer", None)
+    if nested_tokenizer is not None and hasattr(nested_tokenizer, "apply_chat_template"):
+        print("Detected multimodal processor; using its underlying text tokenizer.")
+        return nested_tokenizer
+    return tokenizer_or_processor
+
+
 def build_dataset(
     input_csv: Path,
     template_name: str,
@@ -223,6 +237,8 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         full_finetuning=bool(config.get("full_finetuning", False)),
     )
 
+    tokenizer = ensure_text_tokenizer(tokenizer)
+
     model = FastModel.get_peft_model(
         model,
         r=int(config.get("lora_r", 16)),
@@ -281,12 +297,8 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         "train_dataset": dataset,
         "eval_dataset": None,
         "args": sft_args,
-        # Use the old `tokenizer` kwarg rather than `processing_class`.
-        # With `processing_class`, newer TRL inspects the object type and routes
-        # Gemma-3's Gemma3Processor into a multimodal training path that expects
-        # a "messages" column and ignores dataset_text_field — breaking text-only
-        # fine-tuning.  The `tokenizer` kwarg forces the text path for all model
-        # families, which is what all working unsloth Gemma-3 examples use.
+        # Keep training on the text-only SFT path across model families.
+        # `tokenizer` here is normalized by ensure_text_tokenizer().
         "tokenizer": tokenizer,
     }
 
