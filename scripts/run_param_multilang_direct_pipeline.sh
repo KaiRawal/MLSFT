@@ -14,7 +14,7 @@ Allowed model_name values:
   unsloth/llama-3.2-1b-Instruct
   unsloth/qwen3-0.6b
   unsloth/gemma-3-4b-it
-  unsloth/llama3.2-3b-Instruct
+  unsloth/llama-3.2-3b-Instruct
   unsloth/qwen3-4b
 
 Example:
@@ -67,8 +67,8 @@ case "${SELECTED_MODEL}" in
     FINETUNE_TEMPLATE_NAME="gemma-3"
     MODEL_NAME_PREFIX="Gemma-3-4B-IT"
     ;;
-  "unsloth/llama3.2-3b-Instruct"|"unsloth/llama-3.2-3b-Instruct")
-    BASE_MODEL_PATH="unsloth/llama3.2-3b-Instruct"
+  "unsloth/llama-3.2-3b-Instruct")
+    BASE_MODEL_PATH="unsloth/llama-3.2-3b-Instruct"
     FINETUNE_TEMPLATE_NAME="llama-3.2"
     MODEL_NAME_PREFIX="Llama-3.2-3B-Instruct"
     ;;
@@ -302,8 +302,8 @@ run_language_pipeline() {
   "summary_json": "data/outputs/fine_tuning/${repo_name}/train_summary.json",
   "num_train_epochs": ${NUM_TRAIN_EPOCHS},
   "learning_rate": 5e-5,
-  "per_device_train_batch_size": 16,
-  "gradient_accumulation_steps": 2,
+  "per_device_train_batch_size": 32,
+  "gradient_accumulation_steps": 1,
   "push_to_hub": true,
   "allow_existing_hf_repo": false,
   "hf_repo": "${repo_name}"
