@@ -28,6 +28,7 @@ from typing import Any
 
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
+from transformers import AutoProcessor
 from unsloth import FastModel
 from unsloth.chat_templates import get_chat_template
 import pandas as pd
@@ -317,6 +318,10 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
             # Fallback path if merged-save API is unavailable in the installed version.
             model.save_pretrained(str(local_model_dir))
             tokenizer.save_pretrained(str(local_model_dir))
+            
+        if "gemma-3-4b" in config.get("model_name", "").lower():
+            processor = AutoProcessor.from_pretrained(config["model_name"], trust_remote_code=True)
+            processor.save_pretrained(str(local_model_dir))
     else:
         print("Skipped local merged-model save to preserve disk space.")
 
@@ -353,6 +358,9 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
             save_method=config.get("save_method", "merged_16bit"),
             token=hf_token,
         )
+        if "gemma-3-4b" in config.get("model_name", "").lower():
+            processor = AutoProcessor.from_pretrained(config["model_name"], trust_remote_code=True)
+            processor.push_to_hub(full_repo_id, token=hf_token)
 
     return summary
 
