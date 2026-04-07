@@ -2,7 +2,11 @@
 
 This repository contains script-based replacements for the original Colab notebooks used for multilingual fine-tuning and refusal-rate evaluation. Some finetuned models can be found at [https://huggingface.co/kairawal/models](https://huggingface.co/kairawal/models).
 
-## ⚠️ WARNING: LLAMA/GEMMA FINETUNING IS CURRENTLY BROKEN IN SCRIPTS
+## ⚠️ WARNING: (4B Gemma) FINETUNING
+
+For Gemma 4B, use: `export UNSLOTH_DISABLE_TRITON=1`
+
+## ⚠️ WARNING: (larger) LLAMA/GEMMA FINETUNING IS CURRENTLY BROKEN
 
 IMPORTANT STATUS:
 
