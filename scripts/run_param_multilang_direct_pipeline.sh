@@ -7,6 +7,7 @@ cd "${ROOT_DIR}"
 usage() {
   cat <<'EOF'
 Usage:
+  scripts/run_param_multilang_direct_pipeline.sh [--force-reeval] <model_name> <num_train_epochs>
   scripts/run_param_multilang_direct_pipeline.sh <model_name> <num_train_epochs>
 
 Allowed model_name values:
@@ -19,8 +20,36 @@ Allowed model_name values:
 
 Example:
   scripts/run_param_multilang_direct_pipeline.sh unsloth/qwen3-4b 2
+  scripts/run_param_multilang_direct_pipeline.sh --force-reeval unsloth/qwen3-4b 2
 EOF
 }
+
+FORCE_REEVAL=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force-reeval)
+      FORCE_REEVAL=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Error: unknown option '$1'." >&2
+      usage
+      exit 1
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
 if [[ $# -ne 2 ]]; then
   usage
@@ -265,6 +294,7 @@ echo "Using base model: ${BASE_MODEL_PATH}"
 echo "Using fine-tune template: ${FINETUNE_TEMPLATE_NAME}"
 echo "Using train epochs: ${NUM_TRAIN_EPOCHS}"
 echo "Using epoch tag: ${EPOCH_TAG}"
+echo "Force re-evaluation mode: ${FORCE_REEVAL}"
 echo "Pipeline per language: fine-tune -> post-English eval -> post-translated eval -> pre-English eval -> pre-translated eval"
 
 run_language_pipeline() {
@@ -305,7 +335,7 @@ run_language_pipeline() {
   "per_device_train_batch_size": 32,
   "gradient_accumulation_steps": 1,
   "push_to_hub": true,
-  "allow_existing_hf_repo": false,
+  "allow_existing_hf_repo": ${FORCE_REEVAL},
   "hf_repo": "${repo_name}"
 }
 JSON
@@ -447,14 +477,14 @@ JSON
 }
 
 LANGUAGE_RUNS=(
-  "Hindi|HI|hin_Deva"
-  "Danish|DA|dan_Latn"
-  "Chinese|ZH|zho_Hans"
-  "Greek|EL|ell_Grek"
-  "Irish|GA|gle_Latn"
-  "Portuguese|PT|por_Latn"
-  "Spanish|ES|spa_Latn"
-  "Tagalog|TL|tgl_Latn"
+  # "Hindi|HI|hin_Deva"
+  # "Danish|DA|dan_Latn"
+  # "Chinese|ZH|zho_Hans"
+  "Greek|EL|ell_Grek" # Qwen 4B E5 is missing
+  # "Irish|GA|gle_Latn"
+  "Portuguese|PT|por_Latn" # Qwen 0.6B E8 needs re-eval
+  # "Spanish|ES|spa_Latn"
+  # "Tagalog|TL|tgl_Latn"
 )
 
 overall_exit_code=0
