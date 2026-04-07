@@ -21,6 +21,10 @@ Allowed model_name values:
 Example:
   scripts/run_param_multilang_direct_pipeline.sh unsloth/qwen3-4b 2
   scripts/run_param_multilang_direct_pipeline.sh --force-reeval unsloth/qwen3-4b 2
+
+Notes:
+  --force-reeval does not redo fine-tuning. If the HF repo already exists,
+  it skips fine-tuning and re-runs evaluation steps.
 EOF
 }
 
@@ -335,7 +339,7 @@ run_language_pipeline() {
   "per_device_train_batch_size": 32,
   "gradient_accumulation_steps": 1,
   "push_to_hub": true,
-  "allow_existing_hf_repo": ${FORCE_REEVAL},
+  "allow_existing_hf_repo": false,
   "hf_repo": "${repo_name}"
 }
 JSON
@@ -345,10 +349,12 @@ JSON
     if grep -Fq "${expected_existing_msg}" "${step_log}"; then
       skipped_existing_model=1
       record_step_result "${language}" "[1/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Existing HF model reused"
-      record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED" "Finetuned model already existed"
-      record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED" "Finetuned model already existed"
-      record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED" "Finetuned model already existed"
-      record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED" "Finetuned model already existed"
+      if [[ "${FORCE_REEVAL}" != "true" ]]; then
+        record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED" "Finetuned model already existed"
+        record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED" "Finetuned model already existed"
+        record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED" "Finetuned model already existed"
+        record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED" "Finetuned model already existed"
+      fi
     else
       record_step_result "${language}" "[1/5] Fine-tuning" "FAILED" "See ${step_log}"
       record_hard_failure "${language}" "[1/5] Fine-tuning" "See ${step_log}"
@@ -356,7 +362,7 @@ JSON
     fi
   fi
 
-  if [[ "${skipped_existing_model}" -eq 1 ]]; then
+  if [[ "${skipped_existing_model}" -eq 1 && "${FORCE_REEVAL}" != "true" ]]; then
     record_language_result "${language}" "SKIPPED_EXISTING_MODEL" "Fine-tune skipped because model already existed; all evals skipped"
     return 0
   fi
