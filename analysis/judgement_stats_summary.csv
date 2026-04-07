@@ -134,8 +134,8 @@ Qwen3-0.6B-DA-SynthDolly-1A-E8-PREFT_DA_translated_eval_detailed.csv,196,244,440
 Qwen3-0.6B-DA-SynthDolly-1A-E8_DA_translated_eval_detailed.csv,338,102,440
 Qwen3-0.6B-EL-SynthDolly-1A-E5-PREFT_EL_translated_eval_detailed.csv,326,114,440
 Qwen3-0.6B-EL-SynthDolly-1A-E5_EL_translated_eval_detailed.csv,400,40,440
-Qwen3-0.6B-EL-SynthDolly-1A-E8-PREFT_EL_translated_eval_detailed.csv,315,125,440
-Qwen3-0.6B-EL-SynthDolly-1A-E8_EL_translated_eval_detailed.csv,405,35,440
+Qwen3-0.6B-EL-SynthDolly-1A-E8-PREFT_EL_translated_eval_detailed.csv,340,100,440
+Qwen3-0.6B-EL-SynthDolly-1A-E8_EL_translated_eval_detailed.csv,411,29,440
 Qwen3-0.6B-ES-SynthDolly-1A-E5-PREFT_ES_translated_eval_detailed.csv,146,294,440
 Qwen3-0.6B-ES-SynthDolly-1A-E5_ES_translated_eval_detailed.csv,225,215,440
 Qwen3-0.6B-ES-SynthDolly-1A-E8-PREFT_ES_translated_eval_detailed.csv,127,313,440
@@ -152,6 +152,8 @@ Qwen3-0.6B-HI-SynthDolly-1A-E8-PREFT_HI_translated_eval_detailed.csv,261,179,440
 Qwen3-0.6B-HI-SynthDolly-1A-E8_HI_translated_eval_detailed.csv,415,25,440
 Qwen3-0.6B-PT-SynthDolly-1A-E5-PREFT_PT_translated_eval_detailed.csv,154,286,440
 Qwen3-0.6B-PT-SynthDolly-1A-E5_PT_translated_eval_detailed.csv,232,208,440
+Qwen3-0.6B-PT-SynthDolly-1A-E8-PREFT_PT_translated_eval_detailed.csv,155,285,440
+Qwen3-0.6B-PT-SynthDolly-1A-E8_PT_translated_eval_detailed.csv,230,210,440
 Qwen3-0.6B-TL-SynthDolly-1A-E5-PREFT_TL_translated_eval_detailed.csv,269,171,440
 Qwen3-0.6B-TL-SynthDolly-1A-E5_TL_translated_eval_detailed.csv,385,55,440
 Qwen3-0.6B-TL-SynthDolly-1A-E8-PREFT_TL_translated_eval_detailed.csv,264,176,440
@@ -196,6 +198,8 @@ Qwen3-4B-DA-SynthDolly-1A-E5-PREFT_DA_translated_eval_detailed.csv,268,172,440
 Qwen3-4B-DA-SynthDolly-1A-E5_DA_translated_eval_detailed.csv,312,128,440
 Qwen3-4B-DA-SynthDolly-1A-E8-PREFT_DA_translated_eval_detailed.csv,286,154,440
 Qwen3-4B-DA-SynthDolly-1A-E8_DA_translated_eval_detailed.csv,299,141,440
+Qwen3-4B-EL-SynthDolly-1A-E5-PREFT_EL_translated_eval_detailed.csv,286,154,440
+Qwen3-4B-EL-SynthDolly-1A-E5_EL_translated_eval_detailed.csv,357,83,440
 Qwen3-4B-EL-SynthDolly-1A-E8-PREFT_EL_translated_eval_detailed.csv,295,145,440
 Qwen3-4B-EL-SynthDolly-1A-E8_EL_translated_eval_detailed.csv,428,12,440
 Qwen3-4B-ES-SynthDolly-1A-E5-PREFT_ES_translated_eval_detailed.csv,292,148,440
@@ -210,8 +214,8 @@ Qwen3-4B-HI-SynthDolly-1A-E5-PREFT_HI_translated_eval_detailed.csv,273,167,440
 Qwen3-4B-HI-SynthDolly-1A-E5_HI_translated_eval_detailed.csv,308,132,440
 Qwen3-4B-HI-SynthDolly-1A-E8-PREFT_HI_translated_eval_detailed.csv,267,173,440
 Qwen3-4B-HI-SynthDolly-1A-E8_HI_translated_eval_detailed.csv,420,20,440
-Qwen3-4B-PT-SynthDolly-1A-E5-PREFT_PT_translated_eval_detailed.csv,297,143,440
-Qwen3-4B-PT-SynthDolly-1A-E5_PT_translated_eval_detailed.csv,218,222,440
+Qwen3-4B-PT-SynthDolly-1A-E5-PREFT_PT_translated_eval_detailed.csv,306,134,440
+Qwen3-4B-PT-SynthDolly-1A-E5_PT_translated_eval_detailed.csv,235,205,440
 Qwen3-4B-PT-SynthDolly-1A-E8-PREFT_PT_translated_eval_detailed.csv,280,160,440
 Qwen3-4B-PT-SynthDolly-1A-E8_PT_translated_eval_detailed.csv,235,205,440
 Qwen3-4B-TL-SynthDolly-1A-E5-PREFT_TL_translated_eval_detailed.csv,301,139,440
@@ -390,7 +394,7 @@ Qwen3-0.6B-DA-SynthDolly-1A-E8_english_results_detailed.csv,159,281,440
 Qwen3-0.6B-EL-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,69,371,440
 Qwen3-0.6B-EL-SynthDolly-1A-E5_english_results_detailed.csv,102,338,440
 Qwen3-0.6B-EL-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,83,357,440
-Qwen3-0.6B-EL-SynthDolly-1A-E8_english_results_detailed.csv,116,324,440
+Qwen3-0.6B-EL-SynthDolly-1A-E8_english_results_detailed.csv,115,325,440
 Qwen3-0.6B-ES-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,76,364,440
 Qwen3-0.6B-ES-SynthDolly-1A-E5_english_results_detailed.csv,155,285,440
 Qwen3-0.6B-ES-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,78,362,440
@@ -407,7 +411,8 @@ Qwen3-0.6B-HI-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,84,356,440
 Qwen3-0.6B-HI-SynthDolly-1A-E8_english_results_detailed.csv,175,265,440
 Qwen3-0.6B-PT-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,81,359,440
 Qwen3-0.6B-PT-SynthDolly-1A-E5_english_results_detailed.csv,140,300,440
-Qwen3-0.6B-PT-SynthDolly-1A-E8_english_results_detailed.csv,159,281,440
+Qwen3-0.6B-PT-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,79,361,440
+Qwen3-0.6B-PT-SynthDolly-1A-E8_english_results_detailed.csv,137,303,440
 Qwen3-0.6B-TL-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,85,355,440
 Qwen3-0.6B-TL-SynthDolly-1A-E5_english_results_detailed.csv,164,276,440
 Qwen3-0.6B-TL-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,83,357,440
@@ -452,6 +457,8 @@ Qwen3-4B-DA-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,273,167,440
 Qwen3-4B-DA-SynthDolly-1A-E5_english_results_detailed.csv,306,134,440
 Qwen3-4B-DA-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,274,166,440
 Qwen3-4B-DA-SynthDolly-1A-E8_english_results_detailed.csv,320,120,440
+Qwen3-4B-EL-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,267,173,440
+Qwen3-4B-EL-SynthDolly-1A-E5_english_results_detailed.csv,409,31,440
 Qwen3-4B-EL-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,265,175,440
 Qwen3-4B-EL-SynthDolly-1A-E8_english_results_detailed.csv,345,95,440
 Qwen3-4B-ES-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,260,180,440
@@ -466,8 +473,8 @@ Qwen3-4B-HI-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,258,182,440
 Qwen3-4B-HI-SynthDolly-1A-E5_english_results_detailed.csv,295,145,440
 Qwen3-4B-HI-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,255,185,440
 Qwen3-4B-HI-SynthDolly-1A-E8_english_results_detailed.csv,361,79,440
-Qwen3-4B-PT-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,266,174,440
-Qwen3-4B-PT-SynthDolly-1A-E5_english_results_detailed.csv,272,168,440
+Qwen3-4B-PT-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,275,165,440
+Qwen3-4B-PT-SynthDolly-1A-E5_english_results_detailed.csv,285,155,440
 Qwen3-4B-PT-SynthDolly-1A-E8-PREFT_english_results_detailed.csv,268,172,440
 Qwen3-4B-PT-SynthDolly-1A-E8_english_results_detailed.csv,265,175,440
 Qwen3-4B-TL-SynthDolly-1A-E5-PREFT_english_results_detailed.csv,267,173,440
