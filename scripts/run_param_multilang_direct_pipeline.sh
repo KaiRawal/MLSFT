@@ -336,8 +336,8 @@ run_language_pipeline() {
   "summary_json": "data/outputs/fine_tuning/${repo_name}/train_summary.json",
   "num_train_epochs": ${NUM_TRAIN_EPOCHS},
   "learning_rate": 5e-5,
-  "per_device_train_batch_size": 32,
-  "gradient_accumulation_steps": 1,
+  "per_device_train_batch_size": 4,
+  "gradient_accumulation_steps": 2,
   "push_to_hub": true,
   "allow_existing_hf_repo": false,
   "hf_repo": "${repo_name}"
@@ -483,14 +483,14 @@ JSON
 }
 
 LANGUAGE_RUNS=(
-  # "Hindi|HI|hin_Deva"
-  # "Danish|DA|dan_Latn"
-  # "Chinese|ZH|zho_Hans"
+  "Hindi|HI|hin_Deva"
+  "Danish|DA|dan_Latn"
+  "Chinese|ZH|zho_Hans"
   "Greek|EL|ell_Grek" # Qwen 4B E5 is missing
-  # "Irish|GA|gle_Latn"
+  "Irish|GA|gle_Latn"
   "Portuguese|PT|por_Latn" # Qwen 0.6B E8 needs re-eval
-  # "Spanish|ES|spa_Latn"
-  # "Tagalog|TL|tgl_Latn"
+  "Spanish|ES|spa_Latn"
+  "Tagalog|TL|tgl_Latn"
 )
 
 overall_exit_code=0

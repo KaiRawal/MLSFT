@@ -1,0 +1,85 @@
+
+
+
+
+================================================================================
+DIRECT MULTILINGUAL PIPELINE SUMMARY
+================================================================================
+Run ID: Linux_x86_64_virgil_20260410_215116
+Generated at: 2026-04-10 21:53:25
+Summary file: outputs/run_summaries/Linux_x86_64_virgil_20260410_215116.txt
+Detailed step logs: outputs/run_summaries/Linux_x86_64_virgil_20260410_215116_logs
+Base model: unsloth/qwen3-0.6b
+Train epochs: 1
+Epoch tag: E1
+
+Language Outcomes
+================================================================================
+  - Hindi | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+  - Danish | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+  - Chinese | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+  - Greek | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+  - Irish | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+  - Portuguese | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+  - Spanish | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+  - Tagalog | SKIPPED_EXISTING_MODEL | Fine-tune skipped because model already existed; all evals skipped
+
+Step Outcomes
+================================================================================
+  - Hindi | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Hindi | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Hindi | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Hindi | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Hindi | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+  - Danish | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Danish | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Danish | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Danish | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Danish | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+  - Chinese | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Chinese | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Chinese | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Chinese | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Chinese | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+  - Greek | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Greek | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Greek | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Greek | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Greek | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+  - Irish | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Irish | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Irish | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Irish | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Irish | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+  - Portuguese | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Portuguese | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Portuguese | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Portuguese | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Portuguese | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+  - Spanish | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Spanish | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Spanish | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Spanish | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Spanish | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+  - Tagalog | [1/5] Fine-tuning | SKIPPED_EXISTING_MODEL | Existing HF model reused
+  - Tagalog | [2/5] Post-finetune English eval (HF model) | SKIPPED | Finetuned model already existed
+  - Tagalog | [3/5] Post-finetune translated eval (HF model) | SKIPPED | Finetuned model already existed
+  - Tagalog | [4/5] Pre-finetune English eval | SKIPPED | Finetuned model already existed
+  - Tagalog | [5/5] Pre-finetune translated eval | SKIPPED | Finetuned model already existed
+
+Hard Failures
+================================================================================
+  - None
+
+Primary Output Directories
+================================================================================
+  - data/outputs/eval_english
+  - data/outputs/eval_translated
+  - data/outputs/fine_tuning
+
+New CSV Files Created During This Run
+================================================================================
+  - No newly created CSV files were detected under data/outputs.
+
+Final Status: SUCCESS (no hard failures)
+================================================================================
