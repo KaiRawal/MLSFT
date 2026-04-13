@@ -3,7 +3,7 @@
   "model_id": "qwen3-0.6B-HI-SynthDolly-3A",
   "language_code": "HI",
   "source_lang_code": "hin_Deva",
-  "local_prompt_csv": "data/inputs/eval_prompts/MLSFT - Hindi Evaluation Prompts  - Sheet1.csv",
+  "local_prompt_csv": "data/inputs/eval_prompts/Hindi_evaluation_prompts.csv",
   "english_prompt_jsonl": "data/inputs/eval_prompts/sorry-bench-questions.jsonl",
   "sorry_bench_dir": "external/sorry-bench",
   "nllb_ct2_dir": "external/nllb-3.3b-ct2-int8",

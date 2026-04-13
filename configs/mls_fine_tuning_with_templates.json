@@ -4,7 +4,7 @@
   "model_id": "qwen3-0.6B-HI-SynthDolly-3A",
   "random_seed": 73,
   "template_name": "chatml",
-  "input_csv": "data/inputs/fine_tuning/MLS - Fine-Tuning Data - Hindi - Sheet1.csv",
+  "input_csv": "data/inputs/fine_tuning/Hindi_finetuning_data.csv",
   "output_dir": "data/outputs/fine_tuning/qwen3-0.6B-HI-SynthDolly-3A",
   "local_model_dir": "data/outputs/fine_tuning/qwen3-0.6B-HI-SynthDolly-3A/model_merged",
   "summary_json": "data/outputs/fine_tuning/qwen3-0.6B-HI-SynthDolly-3A/train_summary.json",

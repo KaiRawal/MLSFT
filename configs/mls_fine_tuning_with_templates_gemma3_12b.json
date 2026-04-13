@@ -4,7 +4,7 @@
   "model_id": "Gemma-3-12B-IT-HI-SynthDolly-TEST",
   "random_seed": 3407,
   "template_name": "gemma-3",
-  "input_csv": "data/inputs/fine_tuning/MLS - Fine-Tuning Data - Hindi - Sheet1.csv",
+  "input_csv": "data/inputs/fine_tuning/Hindi_finetuning_data.csv",
   "output_dir": "data/outputs/fine_tuning/Gemma-3-12B-IT-HI-SynthDolly-TEST",
   "local_model_dir": "data/outputs/fine_tuning/Gemma-3-12B-IT-HI-SynthDolly-TEST/model_merged",
   "summary_json": "data/outputs/fine_tuning/Gemma-3-12B-IT-HI-SynthDolly-TEST/train_summary.json",

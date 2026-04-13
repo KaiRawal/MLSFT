@@ -1,8 +1,10 @@
 *.DS_Store
-src/*
 data/outputs/fine_tuning/*
 external/*
+data/cache/
+data/outputs/**/*.jsonl
 unsloth_compiled_cache/
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

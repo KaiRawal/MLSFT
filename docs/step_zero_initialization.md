@@ -4,7 +4,7 @@ These steps replace Colab-time cloning/downloading/auth with a one-time local se
 
 Automated option:
 
-- You can run `scripts/setup_step_zero.sh` to perform a full local setup.
+- You can run `orchestration/setup_environment.sh` to perform a full local setup.
 - It requires `HF_TOKEN` in your environment.
 - It intentionally does not download language CSVs; keep placing those manually under `data/inputs`.
 
@@ -68,21 +68,21 @@ Create this folder once (for example via ct2 conversion) before running translat
 
 Expected examples:
 
-- data/inputs/fine_tuning/MLS - Fine-Tuning Data - Hindi - Sheet1.csv
-- data/inputs/eval_prompts/MLSFT - Hindi Evaluation Prompts  - Sheet1.csv
+- data/inputs/fine_tuning/Hindi_finetuning_data.csv
+- data/inputs/eval_prompts/Hindi_evaluation_prompts.csv
 
 ## 7) Execute scripts
 
 Run individually:
 
 ```bash
-python scripts/mls_fine_tuning_with_templates.py --config configs/mls_fine_tuning_with_templates.json
-python scripts/mls_eval_english.py --config configs/mls_eval_english.json
-python scripts/nllb_200_mls_run_sorry_bench_with_translated_prompts.py --config configs/nllb_200_mls_run_sorry_bench_with_translated_prompts.json
+python src/mls_fine_tuning_with_templates.py --config configs/mls_fine_tuning_with_templates.json
+python src/mls_eval_english.py --config configs/mls_eval_english.json
+python src/nllb_200_mls_run_sorry_bench_with_translated_prompts.py --config configs/nllb_200_mls_run_sorry_bench_with_translated_prompts.json
 ```
 
 Or run sequentially:
 
 ```bash
-bash scripts/run_pipeline.sh
+bash orchestration/run_complete_pipeline.sh
 ```
