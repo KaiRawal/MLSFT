@@ -2,14 +2,14 @@
 
 Multilingual safety fine-tuning and refusal-rate evaluation.
 
-## Start Here
+## Documentation
 
+- [Setup and Installation](docs/step_zero_initialization.md)
 - [Repository layout](docs/repository_layout.md)
 - [Source reference](docs/src_reference.md)
 - [Orchestration reference](docs/orchestration_reference.md)
 - [Data and results](docs/data_and_results.md)
 - [Config reference](docs/config_reference.md)
-- [Step zero initialization](docs/step_zero_initialization.md)
 
 ## Common Commands
 
