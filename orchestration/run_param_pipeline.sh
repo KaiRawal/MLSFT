@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
 usage() {
   cat <<'EOF'
 Usage:
-  orchestration/models/run_param_pipeline.sh [--force-reeval] <model_name> <num_train_epochs>
-  orchestration/models/run_param_pipeline.sh <model_name> <num_train_epochs>
+  orchestration/run_param_pipeline.sh [--force-reeval] <model_name> <num_train_epochs>
+  orchestration/run_param_pipeline.sh <model_name> <num_train_epochs>
 
 Allowed model_name values:
   unsloth/gemma-3-1b-it
@@ -19,8 +19,8 @@ Allowed model_name values:
   unsloth/qwen3-4b
 
 Example:
-  orchestration/models/run_param_pipeline.sh unsloth/qwen3-4b 2
-  orchestration/models/run_param_pipeline.sh --force-reeval unsloth/qwen3-4b 2
+  orchestration/run_param_pipeline.sh unsloth/qwen3-4b 2
+  orchestration/run_param_pipeline.sh --force-reeval unsloth/qwen3-4b 2
 
 Notes:
   --force-reeval does not redo fine-tuning. If the HF repo already exists,
@@ -29,6 +29,8 @@ EOF
 }
 
 FORCE_REEVAL=false
+
+SUMMARY_DIR="data/run_summaries"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -121,7 +123,7 @@ RUN_TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
 SYSTEM_ID="$(uname -s)_$(uname -m)_$(hostname -s 2>/dev/null || echo unknown_host)"
 SYSTEM_ID="$(echo "${SYSTEM_ID}" | tr ' /:' '___')"
 RUN_ID="${SYSTEM_ID}_${RUN_TIMESTAMP}"
-SUMMARY_DIR="outputs/run_summaries"
+SUMMARY_DIR="data/run_summaries"
 LOG_DIR="${SUMMARY_DIR}/${RUN_ID}_logs"
 SUMMARY_FILE="${SUMMARY_DIR}/${RUN_ID}.txt"
 

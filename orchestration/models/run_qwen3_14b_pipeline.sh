@@ -8,7 +8,7 @@ RUN_TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
 SYSTEM_ID="$(uname -s)_$(uname -m)_$(hostname -s 2>/dev/null || echo unknown_host)"
 SYSTEM_ID="$(echo "${SYSTEM_ID}" | tr ' /:' '___')"
 RUN_ID="${SYSTEM_ID}_${RUN_TIMESTAMP}"
-SUMMARY_DIR="outputs/run_summaries"
+SUMMARY_DIR="data/run_summaries"
 LOG_DIR="${SUMMARY_DIR}/${RUN_ID}_logs"
 SUMMARY_FILE="${SUMMARY_DIR}/${RUN_ID}.txt"
 

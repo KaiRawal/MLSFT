@@ -13,7 +13,7 @@ For each file, computes:
 Pre/post rates are computed as proportion of ones:
 - rate = count_ones / total_length
 
-Writes one consolidated CSV to analysis/judgement_stats_summary.csv,
+Writes one consolidated CSV to data/results/judgement_stats_summary.csv,
 overwriting it on each run.
 """
 
@@ -29,10 +29,9 @@ INPUT_PATTERNS = [
     ROOT / "data/outputs/eval_translated/*_detailed*.csv",
     ROOT / "data/outputs/eval_english/*_detailed*.csv",
 ]
-OUTPUT_CSV = Path(__file__).resolve().parent / "judgement_stats_summary.csv"
-COMPARISON_OUTPUT_CSV = (
-    Path(__file__).resolve().parent / "compliance_rate_stats.csv"
-)
+OUTPUT_DIR = ROOT / "data" / "results"
+OUTPUT_CSV = OUTPUT_DIR / "judgement_stats_summary.csv"
+COMPARISON_OUTPUT_CSV = OUTPUT_DIR / "compliance_rate_stats.csv"
 
 
 def normalize_judgement(value: str) -> str:
@@ -86,6 +85,7 @@ def collect_input_files() -> List[Path]:
 
 
 def write_summary(rows: List[Dict[str, int | str]], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
@@ -162,6 +162,7 @@ def build_pre_post_rate_rows(rows: List[Dict[str, int | str]]) -> List[Dict[str,
 
 
 def write_pre_post_rates(rows: List[Dict[str, str]], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,

@@ -81,8 +81,14 @@ python src/mls_eval_english.py --config configs/mls_eval_english.json
 python src/nllb_200_mls_run_sorry_bench_with_translated_prompts.py --config configs/nllb_200_mls_run_sorry_bench_with_translated_prompts.json
 ```
 
-Or run sequentially:
+Run the single test pipeline:
 
 ```bash
-bash orchestration/run_complete_pipeline.sh
+bash orchestration/run_single_test.sh
+```
+
+Run the expanded reproduction batch:
+
+```bash
+bash orchestration/run_all.sh
 ```
