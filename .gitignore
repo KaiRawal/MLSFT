@@ -3,6 +3,7 @@ data/outputs/fine_tuning/*
 external/*
 data/cache/
 data/outputs/**/*.jsonl
+outputs/run_summaries/*
 unsloth_compiled_cache/
 .vscode/
 
