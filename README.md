@@ -1,4 +1,4 @@
-# MLSFT: The Heterogeneous Safety Impacts of Benign Multilingual Fine-Tuning
+# The Heterogeneous Safety Impacts of Benign Multilingual Fine-Tuning (MLSFT)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Hugging%20Face%20Datasets](https://img.shields.io/badge/Hugging%20Face-Datasets-fcd022?logo=huggingface&logoColor=000)](https://huggingface.co/collections/kairawal/mlsft-datasets)
@@ -10,14 +10,15 @@
 
 This repository contains the complete code, data, and results for the paper **"The Heterogeneous Safety Impacts of Benign Multilingual Fine-Tuning"**. 
 
-We investigate how benign supervised fine-tuning (SFT) of large language models affects their compliance and refusal rates across multiple languages. We perform finetuning using a 1000 datapoint multilingual (8 languages) synthetic version of the Dolly dataset, with manual quality verification for each target language. We then finetune various language models and evaluate changes in safety compliance using Sorry-Bench, both in the English and (via NLLB translation) in the target translated language. Our findings reveal that finetuning has **heterogeneous impacts** on compliance rates, with effects varying significantly across different models and languages.
+We investigate how benign multilingual supervised fine-tuning (MLSFT) of language models affects their compliance and refusal rates, both in English and the target languages. We perform finetuning using a 1000 datapoint multilingual (8 languages) synthetic version of the Dolly dataset, with manual quality verification for each target language. We then finetune various language models and evaluate changes in safety compliance using Sorry-Bench, both in the English and (via NLLB translation) in the target translated language. Our findings reveal that finetuning has heterogeneous impacts on compliance rates, with effects varying significantly across different models and languages.
+
+**For installation, setup, orchestration, and reproduction details, see [docs/README.md](docs/README.md).**
 
 ### Key Contributions
 
-- Safety finetuning produces **varied effects** across different models and languages
-- Effects are measured on both **English and translated evaluations**
-- Reproducible pipeline with multiple model architectures and sizes
-- Comprehensive multilingual safety evaluation framework and datasets
+- Benign finetuning produces **heterogeneous impacts** on safety complaince rates across models and languages.
+- Effects on safety are measured using both **English and translated evaluations**.
+- A comprehensive, reproducible multlilingual benchmark with both finetuning data and an evaluation pipeline, **verfied manually across 8 non-english languages**.
 
 ## Datasets and Models
 
