@@ -131,18 +131,17 @@ MLSFT/
 
 ### Hugging Face Collections
 
-- **[MLSFT Datasets](https://huggingface.co/collections/kairawal/mlsft-datasets)** — SynthDolly multilingual finetuning data
-- **[MLSFT Large Models](https://huggingface.co/collections/kairawal/mlsft-llms-e01)** — Fine-tuned larger models
-- **[MLSFT Small Models - Epoch 1](https://huggingface.co/collections/kairawal/mlsft-smalllms-e01)**
-- **[MLSFT Small Models - Epoch 3](https://huggingface.co/collections/kairawal/mlsft-smalllms-e03)**
-- **[MLSFT Small Models - Epoch 5](https://huggingface.co/collections/kairawal/mlsft-smalllms-e05)**
-- **[MLSFT Small Models - Epoch 8](https://huggingface.co/collections/kairawal/mlsft-smalllms-e08)**
+- **[MLSFT Datasets](https://huggingface.co/collections/kairawal/mlsft-datasets)** — Dataset collection containing SynthDolly multilingual finetuning data and multilingual Sorry-Bench evaluation datasets.
+- **[MLSFT Large Models (Epoch 1)](https://huggingface.co/collections/kairawal/mlsft-llms-e01)** — SynthDolly-finetuned larger LLM checkpoints after 1 epoch.
+- **[MLSFT Small Models (Epoch 1)](https://huggingface.co/collections/kairawal/mlsft-smalllms-e01)** — SynthDolly-finetuned smaller LLM checkpoints after 1 epoch.
+- **[MLSFT Small Models (Epoch 3)](https://huggingface.co/collections/kairawal/mlsft-smalllms-e03)** — SynthDolly-finetuned smaller LLM checkpoints after 3 epochs.
+- **[MLSFT Small Models (Epoch 5)](https://huggingface.co/collections/kairawal/mlsft-smalllms-e05)** — SynthDolly-finetuned smaller LLM checkpoints after 5 epochs.
+- **[MLSFT Small Models (Epoch 8)](https://huggingface.co/collections/kairawal/mlsft-smalllms-e08)** — SynthDolly-finetuned smaller LLM checkpoints after 8 epochs.
 
-### Languages Included
+### Languages Included (except English)
 
 - Chinese
 - Danish  
-- English
 - Greek
 - Hindi
 - Irish
