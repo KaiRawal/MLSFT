@@ -18,7 +18,8 @@ import os
 import sys
 from pathlib import Path
 
-from huggingface_hub import HfApi, RepositoryNotFoundError
+from huggingface_hub import HfApi
+from huggingface_hub.errors import RepositoryNotFoundError
 
 
 def get_hf_credentials() -> tuple[str, str]:

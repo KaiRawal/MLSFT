@@ -373,6 +373,8 @@ JSON
       echo "Successfully organized model into collection."
     else
       echo "Warning: Failed to organize model into collection. Continuing with evaluation..."
+      echo "repo_id: ${repo_name}, epoch: ${NUM_TRAIN_EPOCHS}, seed: ${SELECTED_SEED}"
+      echo "See ${step_log} for details."
     fi
   fi
 
