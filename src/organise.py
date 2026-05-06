@@ -16,7 +16,6 @@ The script is idempotent:
 import argparse
 import os
 import sys
-from pathlib import Path
 
 from huggingface_hub import HfApi
 from huggingface_hub.errors import RepositoryNotFoundError
@@ -43,67 +42,42 @@ def get_repo_info(api: HfApi, repo_id: str) -> dict | None:
         return None
 
 
-def collection_exists(api: HfApi, hf_user: str, collection_slug: str) -> bool:
-    """Check if a collection exists for the user."""
+def get_or_create_collection(api: HfApi, hf_user: str, collection_title: str, token: str):
+    """Get an existing collection or create a new one."""
+    slug = f"{hf_user}/{collection_title}"
+
     try:
-        api.get_collection(collection_slug=f"{hf_user}/{collection_slug}")
-        return True
+        return api.get_collection(collection_slug=slug, token=token)
     except RepositoryNotFoundError:
-        return False
+        print(f"Creating new collection: {slug}")
+        return api.create_collection(
+            title=collection_title,
+            namespace=hf_user,
+            description=f"Fine-tuned models from the MLSFT pipeline: {collection_title}",
+            private=False,
+            exists_ok=True,
+            token=token,
+        )
 
 
-def get_or_create_collection(
-    api: HfApi, hf_user: str, collection_slug: str, token: str
-) -> dict:
-    """
-    Get an existing collection or create a new one.
-
-    Returns the collection object.
-    """
-    if collection_exists(api, hf_user, collection_slug):
-        return api.get_collection(collection_slug=f"{hf_user}/{collection_slug}")
-
-    # Collection doesn't exist, create it
-    print(f"Creating new collection: {collection_slug}")
-    collection = api.create_collection(
-        collection_name=collection_slug,
-        description=f"Fine-tuned models from the MLSFT pipeline: {collection_slug}",
-        private=False,
-        token=token,
-    )
-    return collection
-
-
-def repo_in_any_collection(api: HfApi, repo_id: str) -> bool:
-    """
-    Check if a repo is already in any collection.
-
-    Uses the repo info to detect collection membership.
-    """
-    repo_info = get_repo_info(api, repo_id)
-    if repo_info is None:
-        return False
-
-    # Check if the repo has any collections (the collections attribute)
-    # Note: The exact attribute name may vary; we check for presence of collection refs
-    if hasattr(repo_info, "collections") and repo_info.collections:
-        return True
-
-    return False
+def repo_in_any_collection(api: HfApi, hf_user: str, repo_id: str, token: str) -> bool:
+    """Check whether the repo is already present in any collection owned by the user."""
+    return any(api.list_collections(owner=hf_user, item=f"models/{repo_id}", token=token))
 
 
 def add_repo_to_collection(
     api: HfApi,
+    hf_user: str,
     collection_slug: str,
     repo_id: str,
     token: str,
 ) -> None:
     """Add a repo to a collection."""
-    full_collection_slug = f"{collection_slug}"
     api.add_collection_item(
-        collection_slug=full_collection_slug,
+        collection_slug=collection_slug,
         item_id=repo_id,
         item_type="model",
+        exists_ok=True,
         token=token,
     )
 
@@ -157,19 +131,20 @@ def main() -> None:
         print(f"Warning: Repo {full_repo_id} not found. It may not have been uploaded yet.", file=sys.stderr)
         sys.exit(0)
 
-    # Construct the collection slug
-    collection_slug = f"MLSFT-Models-E{args.epoch}-S{args.seed}"
+    # Construct the collection title; the HF API will return the real slug.
+    collection_title = f"MLSFT-Models-E{args.epoch}-S{args.seed}"
 
-    print(f"Organizing repo {full_repo_id} into collection {collection_slug}...")
+    print(f"Organizing repo {full_repo_id} into collection {collection_title}...")
 
     # Check if the repo is already in any collection
-    if repo_in_any_collection(api, full_repo_id):
+    if repo_in_any_collection(api, hf_user, full_repo_id, hf_token):
         print(f"Repo {full_repo_id} is already in a collection. Skipping.")
         sys.exit(0)
 
     # Get or create the collection
     try:
-        collection = get_or_create_collection(api, hf_user, collection_slug, hf_token)
+        collection = get_or_create_collection(api, hf_user, collection_title, hf_token)
+        collection_slug = collection.slug
         print(f"Collection {collection_slug} ready.")
     except Exception as e:
         print(f"Error managing collection: {e}", file=sys.stderr)
@@ -179,6 +154,7 @@ def main() -> None:
     try:
         add_repo_to_collection(
             api,
+            hf_user,
             collection_slug,
             full_repo_id,
             hf_token,
