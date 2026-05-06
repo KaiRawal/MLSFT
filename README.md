@@ -50,11 +50,13 @@ python src/summarize_judgement_stats.py
 If you use this code or datasets in your research, please cite:
 
 ```bibtex
-@article{hawkins2026mlsft,
+@InProceedings{hawkins2026mlsft,
   title={Heterogeneous Impacts of Multilingual Safety Finetuning},
   author={Will Hawkins and Kai Rawal and Jonathan Rystrom and Stratis Tsirtsis and Zihao Fu and Greta Warren and Eoin D. Delaney and Ryan Brown and Sandra Wachter and Brent Mittelstadt and Chris Russell},
+  booktitle={Proceedings of the 43rd International Conference on Machine Learning},
   year={2026},
-  note={[Citation format to be updated upon publication]}
+  series={Proceedings of Machine Learning Research},
+  publisher={PMLR}
 }
 ```
 

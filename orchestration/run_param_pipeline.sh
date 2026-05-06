@@ -17,6 +17,7 @@ Allowed model_name values:
   unsloth/gemma-3-4b-it
   unsloth/llama-3.2-3b-Instruct
   unsloth/qwen3-4b
+  unsloth/Meta-Llama-3.1-8B-Instruct
 
 Example:
   orchestration/run_param_pipeline.sh unsloth/qwen3-4b 2
@@ -111,6 +112,11 @@ case "${SELECTED_MODEL}" in
     BASE_MODEL_PATH="unsloth/qwen3-4b"
     FINETUNE_TEMPLATE_NAME="chatml"
     MODEL_NAME_PREFIX="Qwen3-4B"
+    ;;
+  "unsloth/Meta-Llama-3.1-8B-Instruct")
+    BASE_MODEL_PATH="unsloth/Meta-Llama-3.1-8B-Instruct"
+    FINETUNE_TEMPLATE_NAME="llama-3.1"
+    MODEL_NAME_PREFIX="Llama-3.1-8B-Instruct"
     ;;
   *)
     echo "Error: unsupported model '${SELECTED_MODEL}'." >&2
