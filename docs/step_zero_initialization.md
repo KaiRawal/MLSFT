@@ -4,14 +4,10 @@ These steps replace Colab-time cloning/downloading/auth with a one-time local se
 
 Automated option:
 
-- You can run `orchestration/setup_environment.sh` to perform a full local setup.
-- It requires `HF_TOKEN` in your environment.
-- It intentionally does not download language CSVs; keep placing those manually under `data/inputs`.
-
-Local-first note:
-
-- The default script/config flow is now local-only (no required HF upload after fine-tuning).
-- Hugging Face auth is only needed when accessing gated/private assets or when you explicitly enable push_to_hub.
+- You can run `orchestration/setup_environment.sh` to perform the local setup.
+- export the following vars using your huggingface credentials: `HF_TOKEN`, `HF_USER`
+- export `VLLM_WORKER_MULTIPROC_METHOD=spawn` for running evaluations
+- [optional] export `CUDA_VISIBLE_DEVICES=2,3` depending on your GPU setup
 
 ## 1) Clone required repositories
 
