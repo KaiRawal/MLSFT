@@ -18,7 +18,7 @@ import os
 import sys
 
 from huggingface_hub import HfApi
-from huggingface_hub.errors import RepositoryNotFoundError
+from huggingface_hub.utils import HfHubHTTPError
 
 
 def get_hf_credentials() -> tuple[str, str]:
@@ -34,23 +34,31 @@ def get_hf_credentials() -> tuple[str, str]:
     return hf_user, hf_token
 
 
-def get_repo_info(api: HfApi, repo_id: str) -> dict | None:
-    """Get info about a repo. Returns None if not found."""
+def get_repo_info(api: HfApi, repo_id: str, token: str | None = None) -> dict | None:
+    """Get info about a repo. Returns None if not found.
+
+    Uses `model_info` and treats HTTP 404 as "not found". Other HTTP
+    errors are re-raised for the caller to handle.
+    """
     try:
-        return api.repo_info(repo_id=repo_id, repo_type="model")
-    except RepositoryNotFoundError:
-        return None
+        return api.model_info(repo_id=repo_id, token=token)
+    except HfHubHTTPError as exc:
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        if status_code == 404:
+            return None
+        raise
 
 
 def get_or_create_collection(api: HfApi, hf_user: str, collection_title: str, token: str):
-    """Get an existing collection or create a new one."""
-    slug = f"{hf_user}/{collection_title}"
+    """Get an existing collection or create a new one (atomic).
 
+    The HF client supports `create_collection(..., exists_ok=True)` which
+    returns the existing collection if it already exists. Use that to
+    avoid race conditions and to simplify error handling.
+    """
+    slug = f"{hf_user}/{collection_title}"
     try:
-        return api.get_collection(collection_slug=slug, token=token)
-    except RepositoryNotFoundError:
-        print(f"Creating new collection: {slug}")
-        return api.create_collection(
+        collection = api.create_collection(
             title=collection_title,
             namespace=hf_user,
             description=f"Fine-tuned models from the MLSFT pipeline: {collection_title}",
@@ -58,11 +66,42 @@ def get_or_create_collection(api: HfApi, hf_user: str, collection_title: str, to
             exists_ok=True,
             token=token,
         )
+        return collection
+    except HfHubHTTPError as exc:
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        if status_code == 403:
+            raise RuntimeError(
+                f"Permission denied interacting with collection '{slug}'. Verify HF_TOKEN permissions and namespace."
+            ) from exc
+        raise
 
 
 def repo_in_any_collection(api: HfApi, hf_user: str, repo_id: str, token: str) -> bool:
-    """Check whether the repo is already present in any collection owned by the user."""
-    return any(api.list_collections(owner=hf_user, item=f"models/{repo_id}", token=token))
+    """Check whether the repo is already present in any collection owned by the user.
+
+    The HF API accepts item filters in the form `models/<namespace>/<repo>` or
+    `models/<repo>`. Try both variants when given a namespaced repo id.
+    If listing collections fails, return False so the caller can attempt
+    to add the repo (the add call will surface errors if any).
+    """
+    candidates: list[str] = []
+    if "/" in repo_id:
+        namespace, name = repo_id.split("/", 1)
+        candidates.append(f"models/{namespace}/{name}")
+        candidates.append(f"models/{name}")
+    else:
+        candidates.append(f"models/{repo_id}")
+
+    try:
+        for item in candidates:
+            collections = api.list_collections(owner=hf_user, item=item, token=token)
+            if collections:
+                return True
+    except HfHubHTTPError as exc:
+        print(f"Warning: unable to list collections for owner {hf_user}: {exc}", file=sys.stderr)
+        return False
+
+    return False
 
 
 def add_repo_to_collection(
