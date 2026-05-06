@@ -7,11 +7,10 @@ Shell scripts in `orchestration/` are the supported way to run the project.
 
 ## Batch runner
 - `orchestration/run_all.sh` runs the expanded reproduction suite.
-- It executes the parameterized model pipeline at epochs 1, 3, 5, and 8 for the currently supported models.
-- It also runs the fixed large-Qwen pipelines for Qwen3-8B, Qwen3-14B, and Qwen3-32B.
-
-## Config cleanup check
-- `orchestration/check_config_references.sh` reports config files under `configs/` that have no repository references.
+- It executes the parameterized model pipeline **organized by random seed** (outer loop), then model, then epochs.
+- For each seed (73, 3407, 9), all supported models are run at epochs 1, 3, 5, and 8.
+- This seed-major ordering ensures all models and epochs complete for one seed before moving to the next.
+- All runs with a given seed finish before any runs with the next seed begin.
 
 ## Parameterized model runner
 - `orchestration/run_unified_pipeline.sh` is the supported model/epoch/seed runner.
@@ -21,5 +20,18 @@ Shell scripts in `orchestration/` are the supported way to run the project.
 - `orchestration/models/run_qwen3_8b_pipeline.sh`
 - `orchestration/models/run_qwen3_14b_pipeline.sh`
 - `orchestration/models/run_qwen3_32b_pipeline.sh`
+
+## Post-upload model organization
+After each successful fine-tuning and upload to Hugging Face, the pipeline automatically organizes models into collections by epoch and seed.
+- Collection naming: `MLSFT-Models-E{epoch}-S{seed}` (e.g., `MLSFT-Models-E1-S73`)
+- Expected total collections: 4 epochs × 3 seeds = 12 collections
+- The organization step runs via `src/organise.py` and is idempotent:
+  - Reuses existing collections if they already exist
+  - Skips repos that are already in any collection
+  - Only adds uncollected repos to the target collection
+- **Environment variables required:**
+  - `HF_USER`: Hugging Face username (set in environment or `.env` file)
+  - `HF_TOKEN`: Hugging Face user access token (set in environment or `.env` file)
+- If organization fails (e.g., network issues), the pipeline continues with evaluation steps. Check logs to retry manually.
 
 These scripts now write run summaries to `data/run_summaries/`.

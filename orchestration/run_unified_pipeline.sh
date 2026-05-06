@@ -361,6 +361,21 @@ JSON
     return 0
   fi
 
+  # Post-finetune: Organize the uploaded model into HF collections
+  if [[ "${language_hard_failure}" -eq 0 ]]; then
+    echo ""
+    echo "Organizing uploaded model into HF collection..."
+    if python src/organise.py \
+      --repo-id "${repo_name}" \
+      --epoch "${NUM_TRAIN_EPOCHS}" \
+      --seed "${SELECTED_SEED}" \
+      >> "${step_log}" 2>&1; then
+      echo "Successfully organized model into collection."
+    else
+      echo "Warning: Failed to organize model into collection. Continuing with evaluation..."
+    fi
+  fi
+
   # Step 2: Post-finetune English eval
   if [[ "${language_hard_failure}" -eq 0 ]]; then
     if run_step "${language}" "[2/5]" "Post-finetune English eval (HF model)" "${step_log}" python "${ENGLISH_EVAL_SCRIPT}" --config <(cat <<JSON
