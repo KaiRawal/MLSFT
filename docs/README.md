@@ -42,7 +42,7 @@ bash orchestration/run_all.sh
 
 # Run specific model variant
 # Example: qwen3-4b for 2 epochs
-bash orchestration/run_param_pipeline.sh unsloth/qwen3-4b 2
+bash orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 2 73
 
 # Generate summary statistics from results
 python src/summarize_judgement_stats.py
@@ -53,15 +53,11 @@ python src/summarize_judgement_stats.py
 Individual pipeline stages can be run separately:
 
 ```bash
-# Fine-tuning
-python src/mls_fine_tuning_with_templates.py --config configs/mls_fine_tuning_with_templates.json
-
-# English evaluation (pre-finetuned & post-finetuned)
-python src/mls_eval_english.py --config configs/mls_eval_english.json
-
-# Translated evaluation (using NLLB)
-python src/nllb_200_mls_run_sorry_bench_with_translated_prompts.py --config configs/nllb_200_mls_run_sorry_bench_with_translated_prompts.json
+bash orchestration/run_single_test.sh
+bash orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 2 73
 ```
+
+The three JSON files under `configs/` remain the canonical stage templates used by `run_single_test.sh` and preflight validation.
 
 ### Output Locations
 
@@ -95,7 +91,7 @@ MLSFT/
 ├── orchestration/                 # Pipeline scripts
 │   ├── run_all.sh                 # Full pipeline
 │   ├── run_single_test.sh          # Quick test
-│   ├── run_param_pipeline.sh       # Specific model/epoch
+│   ├── run_unified_pipeline.sh     # Specific model/epoch/seed
 │   ├── setup_environment.sh        # Environment setup
 │   ├── models/                     # Per-model pipelines
 │   └── stages/                     # Per-stage pipelines
@@ -171,7 +167,7 @@ To test with a single model variant first:
 
 ```bash
 # Test with qwen3-4b, 2 epochs
-bash orchestration/run_param_pipeline.sh unsloth/qwen3-4b 2
+bash orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 2 73
 ```
 
 ### Data Requirements

@@ -7,7 +7,7 @@ cd "${ROOT_DIR}"
 usage() {
   cat <<'EOF'
 Usage:
-  orchestration/run_unified_pipeline.sh <model_base> <num_epochs>
+  orchestration/run_unified_pipeline.sh <model_base> <num_epochs> <seed>
 
 Supported model_base values:
   unsloth/gemma-3-1b-it
@@ -22,23 +22,26 @@ Supported model_base values:
   unsloth/Qwen3-32B
 
 Example:
-  orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 3
-  orchestration/run_unified_pipeline.sh unsloth/Qwen3-8B 1
+  orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 3 73
+  orchestration/run_unified_pipeline.sh unsloth/Qwen3-8B 1 3407
+  orchestration/run_unified_pipeline.sh unsloth/Meta-Llama-3.1-8B-Instruct 5 9
 
 Notes:
   - num_epochs must be a positive integer
+  - seed must be a positive integer
   - Model hyperparameters (batch size, template, etc.) are auto-detected
   - Environment variables required: HF_USER, HF_TOKEN
 EOF
 }
 
-if [[ $# -ne 2 ]]; then
+if [[ $# -ne 3 ]]; then
   usage
   exit 1
 fi
 
 SELECTED_MODEL="$1"
 NUM_TRAIN_EPOCHS="$2"
+SELECTED_SEED="$3"
 
 if ! [[ "${NUM_TRAIN_EPOCHS}" =~ ^[0-9]+$ ]]; then
   echo "Error: num_epochs must be a positive integer." >&2
@@ -50,7 +53,18 @@ if [[ "${NUM_TRAIN_EPOCHS}" -le 0 ]]; then
   exit 1
 fi
 
+if ! [[ "${SELECTED_SEED}" =~ ^[0-9]+$ ]]; then
+  echo "Error: seed must be a positive integer." >&2
+  exit 1
+fi
+
+if [[ "${SELECTED_SEED}" -le 0 ]]; then
+  echo "Error: seed must be greater than 0." >&2
+  exit 1
+fi
+
 EPOCH_TAG="E${NUM_TRAIN_EPOCHS}"
+SEED_TAG="S${SELECTED_SEED}"
 
 # Function to get model configuration
 get_model_config() {
@@ -188,6 +202,8 @@ print_and_save_summary() {
     echo "Model: ${BASE_MODEL_PATH}"
     echo "Train epochs: ${NUM_TRAIN_EPOCHS}"
     echo "Epoch tag: ${EPOCH_TAG}"
+    echo "Random seed: ${SELECTED_SEED}"
+    echo "Seed tag: ${SEED_TAG}"
     echo ""
     echo "Language Outcomes"
     echo "${border}"
@@ -280,6 +296,8 @@ echo "Using base model: ${BASE_MODEL_PATH}"
 echo "Using template: ${TEMPLATE_NAME}"
 echo "Using train epochs: ${NUM_TRAIN_EPOCHS}"
 echo "Using epoch tag: ${EPOCH_TAG}"
+echo "Using random seed: ${SELECTED_SEED}"
+echo "Using seed tag: ${SEED_TAG}"
 echo "Pipeline per language: fine-tune -> post-English eval -> post-translated eval -> pre-English eval -> pre-translated eval"
 
 run_language_pipeline() {
@@ -287,7 +305,7 @@ run_language_pipeline() {
   local lang_code="$2"
   local source_lang_code="$3"
 
-  local repo_name="${MODEL_PREFIX}-${lang_code}-SynthDolly-1A-${EPOCH_TAG}"
+  local repo_name="${MODEL_PREFIX}-${lang_code}-SynthDolly-1A-${EPOCH_TAG}-${SEED_TAG}"
   local preft_model_id="${repo_name}-PREFT"
   local full_repo_id="${HF_USER}/${repo_name}"
   local expected_existing_msg="Target Hugging Face repo already exists: ${full_repo_id}. Set allow_existing_hf_repo=true to permit re-training and overwriting."
@@ -309,7 +327,7 @@ run_language_pipeline() {
   "language": "${language}",
   "model_name": "${BASE_MODEL_PATH}",
   "model_id": "${repo_name}",
-  "random_seed": 3407,
+  "random_seed": ${SELECTED_SEED},
   "template_name": "${TEMPLATE_NAME}",
   "epoch_tag": "${EPOCH_TAG}",
   "input_csv": "data/inputs/fine_tuning/${language}_finetuning_data.csv",

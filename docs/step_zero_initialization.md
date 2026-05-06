@@ -72,20 +72,19 @@ Expected examples:
 - data/inputs/eval_prompts/Hindi_evaluation_prompts.csv
 
 ## 7) Execute scripts
-
-Run individually:
-
-```bash
-python src/mls_fine_tuning_with_templates.py --config configs/mls_fine_tuning_with_templates.json
-python src/mls_eval_english.py --config configs/mls_eval_english.json
-python src/nllb_200_mls_run_sorry_bench_with_translated_prompts.py --config configs/nllb_200_mls_run_sorry_bench_with_translated_prompts.json
-```
-
 Run the single test pipeline:
 
 ```bash
 bash orchestration/run_single_test.sh
 ```
+
+Run the unified multi-model pipeline:
+
+```bash
+bash orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 2 73
+```
+
+The three JSON files under `configs/` are still used by `run_single_test.sh` and `src/preflight_check.py`.
 
 Run the expanded reproduction batch:
 

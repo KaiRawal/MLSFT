@@ -10,9 +10,12 @@ Shell scripts in `orchestration/` are the supported way to run the project.
 - It executes the parameterized model pipeline at epochs 1, 3, 5, and 8 for the currently supported models.
 - It also runs the fixed large-Qwen pipelines for Qwen3-8B, Qwen3-14B, and Qwen3-32B.
 
+## Config cleanup check
+- `orchestration/check_config_references.sh` reports config files under `configs/` that have no repository references.
+
 ## Parameterized model runner
-- `orchestration/run_param_pipeline.sh` is the relocated model/epoch runner.
-- It accepts `--force-reeval` plus a model name and epoch count.
+- `orchestration/run_unified_pipeline.sh` is the supported model/epoch/seed runner.
+- It requires a model name, epoch count, and seed.
 
 ## Model-specific scripts
 - `orchestration/models/run_qwen3_8b_pipeline.sh`
