@@ -109,7 +109,7 @@ def main() -> None:
     parser.add_argument(
         "--repo-id",
         required=True,
-        help="Repo ID to organize (e.g., 'Qwen3-0.6B-HI-SynthDolly-1A-E1-S73'). Can be bare name or namespace/name.",
+        help="Repo ID to organize (e.g., 'Qwen3-0.6B-HI-SynthDolly-E1-S73'). Can be bare name or namespace/name.",
     )
     parser.add_argument(
         "--epoch",

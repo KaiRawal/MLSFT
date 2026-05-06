@@ -305,7 +305,7 @@ run_language_pipeline() {
   local lang_code="$2"
   local source_lang_code="$3"
 
-  local repo_name="${MODEL_PREFIX}-${lang_code}-SynthDolly-1A-${EPOCH_TAG}-${SEED_TAG}"
+  local repo_name="${MODEL_PREFIX}-${lang_code}-SynthDolly-${EPOCH_TAG}-${SEED_TAG}"
   local preft_model_id="${repo_name}-PREFT"
   local full_repo_id="${HF_USER}/${repo_name}"
   local expected_existing_msg="Target Hugging Face repo already exists: ${full_repo_id}. Set allow_existing_hf_repo=true to permit re-training and overwriting."
