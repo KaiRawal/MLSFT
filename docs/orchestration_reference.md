@@ -11,6 +11,11 @@ Shell scripts in `orchestration/` are the supported way to run the project.
 - For each seed (73, 3407, 9), all supported models are run at epochs 1, 3, 5, and 8.
 - This seed-major ordering ensures all models and epochs complete for one seed before moving to the next.
 - All runs with a given seed finish before any runs with the next seed begin.
+- Failures from `run_unified_pipeline.sh` do **not** stop the batch; each failure is logged and the loop continues.
+- `run_all.sh` writes orchestration-level artifacts to `data/orchestrator_logs/<RUN_ID>/`:
+  - `run_all.log` for the full batch transcript
+  - `seed_<seed>_summary.txt` for per-seed summaries
+  - `master_failure_report.txt` for the consolidated failure report
 
 ## Parameterized model runner
 - `orchestration/run_unified_pipeline.sh` is the supported model/epoch/seed runner.
@@ -34,4 +39,4 @@ After each successful fine-tuning and upload to Hugging Face, the pipeline autom
   - `HF_TOKEN`: Hugging Face user access token (set in environment or `.env` file)
 - If organization fails (e.g., network issues), the pipeline continues with evaluation steps. Check logs to retry manually.
 
-These scripts now write run summaries to `data/run_summaries/`.
+These scripts write pipeline summaries to `data/run_summaries/`, while `run_all.sh` writes orchestration logs to `data/orchestrator_logs/<RUN_ID>/`.
