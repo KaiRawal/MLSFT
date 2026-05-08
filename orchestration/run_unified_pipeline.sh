@@ -7,7 +7,7 @@ cd "${ROOT_DIR}"
 usage() {
   cat <<'EOF'
 Usage:
-  orchestration/run_unified_pipeline.sh <model_base> <num_epochs> <seed>
+  orchestration/run_unified_pipeline.sh [--skip-if-exists] <model_base> <num_epochs> <seed>
 
 Supported model_base values:
   unsloth/gemma-3-1b-it
@@ -25,6 +25,7 @@ Example:
   orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 3 73
   orchestration/run_unified_pipeline.sh unsloth/Qwen3-8B 1 3407
   orchestration/run_unified_pipeline.sh unsloth/Meta-Llama-3.1-8B-Instruct 5 9
+  orchestration/run_unified_pipeline.sh --skip-if-exists unsloth/qwen3-4b 3 73
 
 Notes:
   - num_epochs must be a positive integer
@@ -34,14 +35,47 @@ Notes:
 EOF
 }
 
-if [[ $# -ne 3 ]]; then
+SKIP_IF_EXISTS=false
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-if-exists)
+      SKIP_IF_EXISTS=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [[ $# -gt 0 ]]; do
+        POSITIONAL_ARGS+=("$1")
+        shift
+      done
+      break
+      ;;
+    -*)
+      echo "Error: unsupported option '$1'." >&2
+      usage
+      exit 1
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ ${#POSITIONAL_ARGS[@]} -ne 3 ]]; then
   usage
   exit 1
 fi
 
-SELECTED_MODEL="$1"
-NUM_TRAIN_EPOCHS="$2"
-SELECTED_SEED="$3"
+SELECTED_MODEL="${POSITIONAL_ARGS[0]}"
+NUM_TRAIN_EPOCHS="${POSITIONAL_ARGS[1]}"
+SELECTED_SEED="${POSITIONAL_ARGS[2]}"
 
 if ! [[ "${NUM_TRAIN_EPOCHS}" =~ ^[0-9]+$ ]]; then
   echo "Error: num_epochs must be a positive integer." >&2
@@ -204,6 +238,7 @@ print_and_save_summary() {
     echo "Epoch tag: ${EPOCH_TAG}"
     echo "Random seed: ${SELECTED_SEED}"
     echo "Seed tag: ${SEED_TAG}"
+    echo "Skip if exists flag: ${SKIP_IF_EXISTS}"
     echo ""
     echo "Language Outcomes"
     echo "${border}"
@@ -291,6 +326,43 @@ if [[ ! -d "external/nllb-3.3b-ct2-int8" ]]; then
   exit 1
 fi
 
+hf_model_exists() {
+  local repo_id="$1"
+  python - "$repo_id" <<'PY'
+import os
+import sys
+
+from huggingface_hub import HfApi
+from huggingface_hub.errors import HfHubHTTPError
+
+repo_id = sys.argv[1]
+hf_token = (os.environ.get("HF_TOKEN") or "").strip()
+
+if not hf_token:
+  print(f"Error: HF_TOKEN must be set to check whether '{repo_id}' exists on Hugging Face.", file=sys.stderr)
+  sys.exit(2)
+
+api = HfApi(token=hf_token)
+
+try:
+  api.model_info(repo_id=repo_id, token=hf_token)
+except HfHubHTTPError as exc:
+  status_code = getattr(getattr(exc, "response", None), "status_code", None)
+  if status_code == 404:
+    sys.exit(1)
+  print(
+    f"Error: unable to validate Hugging Face repo status for '{repo_id}' (HTTP {status_code}).",
+    file=sys.stderr,
+  )
+  sys.exit(2)
+except Exception as exc:
+  print(f"Error: unable to validate Hugging Face repo status for '{repo_id}': {exc}", file=sys.stderr)
+  sys.exit(2)
+
+sys.exit(0)
+PY
+}
+
 echo "Current working directory: $(pwd)"
 echo "Using base model: ${BASE_MODEL_PATH}"
 echo "Using template: ${TEMPLATE_NAME}"
@@ -320,6 +392,30 @@ run_language_pipeline() {
   echo ""
   echo ""
   echo "=== ${language} (${lang_code}) -> ${repo_name} ==="
+
+  if [[ "${SKIP_IF_EXISTS}" == "true" ]]; then
+    if hf_model_exists "${full_repo_id}"; then
+      echo "Skipping all steps because ${full_repo_id} already exists on Hugging Face and --skip-if-exists was set."
+      echo "[$(date +"%Y-%m-%d %H:%M:%S")] SKIP existing Hugging Face model detected for ${full_repo_id}" >> "${step_log}"
+      record_step_result "${language}" "[1/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
+      record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
+      record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
+      record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
+      record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
+      record_language_result "${language}" "SKIPPED_EXISTING_MODEL" "Model already exists on Hugging Face; all five steps skipped via --skip-if-exists"
+      return 0
+    else
+      check_exit_code=$?
+      if [[ "${check_exit_code}" -eq 1 ]]; then
+        echo "Model ${full_repo_id} was not found on Hugging Face; continuing with finetuning."
+      else
+        record_step_result "${language}" "[1/5] Fine-tuning" "FAILED" "Unable to verify whether ${full_repo_id} exists on Hugging Face"
+        record_hard_failure "${language}" "[1/5] Fine-tuning" "Unable to verify whether ${full_repo_id} exists on Hugging Face"
+        record_language_result "${language}" "FAILED" "Unable to verify whether ${full_repo_id} exists on Hugging Face"
+        return 1
+      fi
+    fi
+  fi
 
   # Step 1: Fine-tuning
   if run_step "${language}" "[1/5]" "Fine-tuning" "${step_log}" python "${FINETUNE_SCRIPT}" --config <(cat <<JSON

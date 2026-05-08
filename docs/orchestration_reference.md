@@ -12,6 +12,7 @@ Shell scripts in `orchestration/` are the supported way to run the project.
 - This seed-major ordering ensures all models and epochs complete for one seed before moving to the next.
 - All runs with a given seed finish before any runs with the next seed begin.
 - Failures from `run_unified_pipeline.sh` do **not** stop the batch; each failure is logged and the loop continues.
+- `run_all.sh` accepts `--skip-if-exists` and forwards it to each `run_unified_pipeline.sh` invocation.
 - `run_all.sh` writes orchestration-level artifacts to `data/orchestrator_logs/<RUN_ID>/`:
   - `run_all.log` for the full batch transcript
   - `seed_<seed>_summary.txt` for per-seed summaries
@@ -20,6 +21,12 @@ Shell scripts in `orchestration/` are the supported way to run the project.
 ## Parameterized model runner
 - `orchestration/run_unified_pipeline.sh` is the supported model/epoch/seed runner.
 - It requires a model name, epoch count, and seed.
+- It accepts `--skip-if-exists`; when enabled, the runner checks Hugging Face for the target finetuned repo before any work starts.
+- If the repo already exists, the pipeline skips finetuning, organization, and both evaluation passes for that language run.
+- If the repo does not exist, the pipeline proceeds normally.
+
+Example:
+- `orchestration/run_unified_pipeline.sh --skip-if-exists unsloth/qwen3-4b 3 73`
 
 ## Model-specific scripts
 - `orchestration/models/run_qwen3_8b_pipeline.sh`

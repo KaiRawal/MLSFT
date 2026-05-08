@@ -19,6 +19,37 @@ mkdir -p "${ORCH_RUN_DIR}"
 # Stream the orchestration transcript to both stdout and a run-specific log file.
 exec > >(tee -a "${ORCH_LOG_FILE}") 2>&1
 
+SKIP_IF_EXISTS=false
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		--skip-if-exists)
+			SKIP_IF_EXISTS=true
+			shift
+			;;
+		-h|--help)
+			echo "Usage: orchestration/run_all.sh [--skip-if-exists]" >&2
+			exit 0
+			;;
+		--)
+			shift
+			break
+			;;
+		-*)
+			echo "Error: unsupported option '$1'." >&2
+			exit 1
+			;;
+		*)
+			echo "Error: run_all.sh does not accept positional arguments." >&2
+			exit 1
+			;;
+	esac
+done
+
+PIPELINE_ARGS=()
+if [[ "${SKIP_IF_EXISTS}" == "true" ]]; then
+	PIPELINE_ARGS+=(--skip-if-exists)
+fi
+
 SEEDS=(73 3407 9)
 EPOCHS=(1 3 5 8)
 
@@ -134,6 +165,7 @@ log_line INFO "Orchestration transcript: ${ORCH_LOG_FILE}"
 log_line INFO "Per-seed summaries will be written under: ${ORCH_RUN_DIR}"
 log_line INFO "Master failure report will be written to: ${MASTER_FAILURE_REPORT}"
 log_line INFO "Child pipeline summaries remain under: data/run_summaries/"
+log_line INFO "Skip if exists flag: ${SKIP_IF_EXISTS}"
 
 # Run all models for each seed, then proceed to the next seed
 for seed in "${SEEDS[@]}"; do
@@ -158,7 +190,7 @@ for seed in "${SEEDS[@]}"; do
 			TOTAL_RUNS=$((TOTAL_RUNS + 1))
 			seed_total_runs=$((seed_total_runs + 1))
 			log_line STARTED "Model=${model} Epoch=${epoch} Seed=${seed}"
-			if bash orchestration/run_unified_pipeline.sh "${model}" "${epoch}" "${seed}"; then
+			if bash orchestration/run_unified_pipeline.sh "${PIPELINE_ARGS[@]}" "${model}" "${epoch}" "${seed}"; then
 				SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 				seed_success_count=$((seed_success_count + 1))
 				log_line SUCCESS "Model=${model} Epoch=${epoch} Seed=${seed} completed successfully."
@@ -179,7 +211,7 @@ for seed in "${SEEDS[@]}"; do
 			TOTAL_RUNS=$((TOTAL_RUNS + 1))
 			seed_total_runs=$((seed_total_runs + 1))
 			log_line STARTED "Model=${model} Epoch=${epoch} Seed=${seed}"
-			if bash orchestration/run_unified_pipeline.sh "${model}" "${epoch}" "${seed}"; then
+			if bash orchestration/run_unified_pipeline.sh "${PIPELINE_ARGS[@]}" "${model}" "${epoch}" "${seed}"; then
 				SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
 				seed_success_count=$((seed_success_count + 1))
 				log_line SUCCESS "Model=${model} Epoch=${epoch} Seed=${seed} completed successfully."
