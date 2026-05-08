@@ -25,6 +25,9 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+import atexit
+
+from gpu_cleanup import cleanup_torch, register_signal_handlers
 
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
@@ -307,6 +310,12 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
 
     runtime_stats = trainer.train()
 
+    # Training complete — perform best-effort cleanup of trainer/model/tokenizer
+    try:
+        del trainer
+    except Exception:
+        pass
+
     if save_local_model:
         try:
             model.save_pretrained_merged(
@@ -324,6 +333,38 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
             processor.save_pretrained(str(local_model_dir))
     else:
         print("Skipped local merged-model save to preserve disk space.")
+
+    # Ensure large objects are deleted and device caches cleared.
+    try:
+        del model
+    except Exception:
+        pass
+    try:
+        del tokenizer
+    except Exception:
+        pass
+    try:
+        gc.collect()
+    except Exception:
+        pass
+    try:
+        if torch.cuda.is_available():
+            try:
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
+            if hasattr(torch.cuda, "ipc_collect"):
+                try:
+                    torch.cuda.ipc_collect()
+                except Exception:
+                    pass
+        elif torch.backends.mps.is_available() and hasattr(torch, "mps"):
+            try:
+                torch.mps.empty_cache()
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     peak_reserved_gb = None
     if accelerator == "cuda" and torch.cuda.is_available():
@@ -371,6 +412,10 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config(args.config)
+    # Register cleanup handlers for abrupt termination.
+    atexit.register(cleanup_torch)
+    register_signal_handlers()
+
     summary = run_training(config)
 
     summary_json = Path(config["summary_json"])

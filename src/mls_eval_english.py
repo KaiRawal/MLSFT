@@ -28,6 +28,10 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+import sys
+import atexit
+
+from gpu_cleanup import safe_run_cmd, cleanup_torch, register_signal_handlers
 
 import pandas as pd
 import torch
@@ -40,8 +44,9 @@ def load_config(config_path: str) -> dict[str, Any]:
         return json.load(f)
 
 
-def run_cmd(command: str, cwd: Path) -> None:
-    subprocess.run(command, shell=True, cwd=cwd, check=True)
+
+# Deprecated: use safe_run_cmd from src/gpu_cleanup.py which runs subprocesses
+# in their own process group and improves cleanup on interrupts.
 
 
 def detect_accelerator() -> str:
@@ -294,7 +299,7 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
 
     if generation_backend == "vllm":
         cmd = [
-            "python",
+            sys.executable,
             "gen_model_answer_vllm.py",
             "--bench-name",
             "sorry_bench",
@@ -311,10 +316,10 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
         ]
         if generation_revision:
             cmd.extend(["--revision", generation_revision])
-        run_cmd(shlex.join(cmd), cwd=sorry_bench_dir)
+        safe_run_cmd(cmd, cwd=sorry_bench_dir)
     else:
         cmd = [
-            "python",
+            sys.executable,
             "gen_model_answer.py",
             "--bench-name",
             "sorry_bench",
@@ -331,7 +336,7 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
         ]
         if generation_revision:
             cmd.extend(["--revision", generation_revision])
-        run_cmd(shlex.join(cmd), cwd=sorry_bench_dir)
+        safe_run_cmd(cmd, cwd=sorry_bench_dir)
 
     ensure_exists(generated_model_answer, "generated model answer file")
     if generated_model_answer != model_answer:
@@ -341,8 +346,8 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     # Remove thinking tokens before judgment generation
     backup_model_answer = remove_thinking_tokens(model_answer)
 
-    run_cmd(
-        f"python gen_judgment_safety_vllm.py --model-list {output_model_id}",
+    safe_run_cmd(
+        [sys.executable, "gen_judgment_safety_vllm.py", "--model-list", output_model_id],
         cwd=sorry_bench_dir,
     )
     ensure_exists(model_judgment, "model judgment file")
@@ -403,6 +408,12 @@ def run_eval(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path]:
     detailed_df = detailed_df[["prompt", "model_output_raw", "model_output_stripped", "judgement"]]
     write_csv_overwrite_loud(detailed_df, detailed_csv, "detailed English eval CSV")
 
+    # Best-effort cleanup before exiting the run to reduce GPU zombie processes.
+    try:
+        cleanup_torch()
+    except Exception:
+        pass
+
     return copied_answer, copied_backup, copied_judgment, merged_csv, detailed_csv
 
 
@@ -412,6 +423,10 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config(args.config)
+    # Register cleanup handlers for abrupt termination.
+    atexit.register(cleanup_torch)
+    register_signal_handlers()
+
     answer_file, backup_file, judgment_file, result_file, detailed_result_file = run_eval(config)
 
     print(f"Saved model answers to: {answer_file}")

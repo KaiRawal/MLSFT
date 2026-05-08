@@ -34,6 +34,10 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
+import sys
+import atexit
+
+from gpu_cleanup import safe_run_cmd, cleanup_torch, register_signal_handlers
 
 import ctranslate2
 import pandas as pd
@@ -48,7 +52,7 @@ def load_config(config_path: str) -> dict[str, Any]:
         return json.load(f)
 
 
-def run_cmd(command: str, cwd: Path) -> None:
+def run_cmd(command: str, cwd: Path) -> None:  # kept for backward compatibility (not used)
     subprocess.run(command, shell=True, cwd=cwd, check=True)
 
 
@@ -369,7 +373,7 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
 
     if generation_backend == "vllm":
         cmd = [
-            "python",
+            sys.executable,
             "gen_model_answer_vllm.py",
             "--bench-name",
             "sorry_bench",
@@ -386,10 +390,10 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
         ]
         if generation_revision:
             cmd.extend(["--revision", generation_revision])
-        run_cmd(shlex.join(cmd), cwd=sorry_bench_dir)
+        safe_run_cmd(cmd, cwd=sorry_bench_dir)
     else:
         cmd = [
-            "python",
+            sys.executable,
             "gen_model_answer.py",
             "--bench-name",
             "sorry_bench",
@@ -406,7 +410,7 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
         ]
         if generation_revision:
             cmd.extend(["--revision", generation_revision])
-        run_cmd(shlex.join(cmd), cwd=sorry_bench_dir)
+        safe_run_cmd(cmd, cwd=sorry_bench_dir)
 
     ensure_exists(generated_answer_path, "generated model answer jsonl")
     if generated_answer_path != answer_path:
@@ -454,21 +458,51 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
         translated_rows.append(translated_item)
     save_jsonl(translated_path, translated_rows)
 
-    del translator
-    del tokenizer
+    # Prefer explicit close if available, then best-effort cleanup.
+    try:
+        if hasattr(translator, "close"):
+            try:
+                translator.close()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    try:
+        del translator
+    except Exception:
+        pass
+    try:
+        del tokenizer
+    except Exception:
+        pass
     gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    elif torch.backends.mps.is_available() and hasattr(torch, "mps"):
-        torch.mps.empty_cache()
+    try:
+        if torch.cuda.is_available():
+            try:
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
+            if hasattr(torch.cuda, "ipc_collect"):
+                try:
+                    torch.cuda.ipc_collect()
+                except Exception:
+                    pass
+        elif torch.backends.mps.is_available() and hasattr(torch, "mps"):
+            try:
+                torch.mps.empty_cache()
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     backup_local = local_question_jsonl.with_suffix(".backup.jsonl")
     shutil.move(local_question_jsonl, backup_local)
     copy_overwrite_loud(english_question_jsonl, local_question_jsonl, "temporary English question JSONL swap")
 
     try:
-        run_cmd(
-            f"python gen_judgment_safety_vllm.py --model-list {output_model_id}_translated",
+        safe_run_cmd(
+            [sys.executable, "gen_judgment_safety_vllm.py", "--model-list", f"{output_model_id}_translated"],
             cwd=sorry_bench_dir,
         )
     finally:
@@ -557,6 +591,12 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     ]
     write_csv_overwrite_loud(detailed_df, detailed_csv, "detailed translated eval CSV")
 
+    # Best-effort cleanup before returning.
+    try:
+        cleanup_torch()
+    except Exception:
+        pass
+
     return backup_copy, stripped_copy, translated_copy, judgment_copy, merged_csv, detailed_csv
 
 
@@ -566,6 +606,10 @@ def main() -> None:
     args = parser.parse_args()
 
     config = load_config(args.config)
+    # Register cleanup handlers for abrupt termination.
+    atexit.register(cleanup_torch)
+    register_signal_handlers()
+
     backup_file, stripped_file, translated_file, judgment_file, result_file, detailed_result_file = run_pipeline(config)
 
     print(f"Saved model answers backup to: {backup_file}")
