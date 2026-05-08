@@ -13,5 +13,5 @@ These are the main Python entrypoints under `src/`.
 - `src/setup_step_zero.py` and `docs/step_zero_initialization.md` should be read together.
 
 ## Reporting
-- `src/summarize_judgement_stats.py` aggregates evaluation CSVs into `data/results/`.
+- `src/summarize_judgement_stats.py` aggregates evaluation CSVs into `data/results/`. This script is automatically invoked at the end of each orchestration pipeline run.
 

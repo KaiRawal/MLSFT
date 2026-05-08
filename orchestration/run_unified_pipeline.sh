@@ -513,6 +513,16 @@ for run in "${LANGUAGE_RUNS[@]}"; do
   fi
 done
 
+# Generate consolidated evaluation summary
+# This runs regardless of pipeline outcome and does not override the exit code
+echo ""
+echo "Generating consolidated evaluation summary..."
+if python src/summarize_judgement_stats.py >> "${SUMMARY_FILE}" 2>&1; then
+  echo "  Summary generation completed successfully."
+else
+  echo "  Warning: Summary generation failed. See ${SUMMARY_FILE} for details."
+fi
+
 print_and_save_summary "${overall_exit_code}"
 
 exit "${overall_exit_code}"

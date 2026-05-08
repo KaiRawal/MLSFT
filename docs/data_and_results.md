@@ -17,6 +17,7 @@ The repository keeps inputs, generated outputs, summaries, and derived tables un
 ## Consolidated results
 - `data/results/judgement_stats_summary.csv` contains the per-file judgement counts.
 - `data/results/compliance_rate_stats.csv` contains the pre/post compliance rate comparison table.
+- These results are **automatically regenerated at the end of each orchestration run** (`orchestration/run_unified_pipeline.sh`), so they always reflect the latest evaluation outputs.
 
 ## Notes
 - `analysis/` is no longer the canonical home for CSV summaries.

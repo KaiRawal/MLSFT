@@ -39,7 +39,7 @@ Paper results are available in `data/results/`:
 - `compliance_rate_stats.csv` — Compliance rate statistics across models and languages
 - `judgement_stats_summary.csv` — Detailed safety judgment summaries
 
-These are generated from individual eval runs in `data/outputs/` using the aggregation script:
+These are generated from individual eval runs in `data/outputs/` and are **automatically refreshed at the end of each orchestration run**. To manually refresh the results:
 
 ```bash
 python src/summarize_judgement_stats.py
