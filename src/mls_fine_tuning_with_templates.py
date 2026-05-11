@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import gc
 from pathlib import Path
 from typing import Any
 import atexit
@@ -334,6 +335,17 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     else:
         print("Skipped local merged-model save to preserve disk space.")
 
+    if push_to_hub:
+        model.push_to_hub_merged(
+            full_repo_id,
+            tokenizer,
+            save_method=config.get("save_method", "merged_16bit"),
+            token=hf_token,
+        )
+        if "gemma-3-4b" in config.get("model_name", "").lower():
+            processor = AutoProcessor.from_pretrained(config["model_name"], trust_remote_code=True)
+            processor.push_to_hub(full_repo_id, token=hf_token)
+
     # Ensure large objects are deleted and device caches cleared.
     try:
         del model
@@ -391,17 +403,6 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
         "save_local_model": save_local_model,
         "local_model_dir": str(local_model_dir) if save_local_model else None,
     }
-
-    if push_to_hub:
-        model.push_to_hub_merged(
-            full_repo_id,
-            tokenizer,
-            save_method=config.get("save_method", "merged_16bit"),
-            token=hf_token,
-        )
-        if "gemma-3-4b" in config.get("model_name", "").lower():
-            processor = AutoProcessor.from_pretrained(config["model_name"], trust_remote_code=True)
-            processor.push_to_hub(full_repo_id, token=hf_token)
 
     return summary
 
