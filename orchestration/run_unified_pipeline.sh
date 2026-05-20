@@ -99,6 +99,9 @@ fi
 
 EPOCH_TAG="E${NUM_TRAIN_EPOCHS}"
 SEED_TAG="S${SELECTED_SEED}"
+LORA_R="${LORA_R:-16}"
+LORA_ALPHA="${LORA_ALPHA:-32}"
+RATIO_TAG="r${LORA_R}alpha${LORA_ALPHA}"
 
 # Function to get model configuration
 get_model_config() {
@@ -370,6 +373,7 @@ echo "Using train epochs: ${NUM_TRAIN_EPOCHS}"
 echo "Using epoch tag: ${EPOCH_TAG}"
 echo "Using random seed: ${SELECTED_SEED}"
 echo "Using seed tag: ${SEED_TAG}"
+echo "Using LoRA ratio tag: ${RATIO_TAG}"
 echo "Pipeline per language: fine-tune -> post-English eval -> post-translated eval -> pre-English eval -> pre-translated eval"
 
 run_language_pipeline() {
@@ -377,7 +381,7 @@ run_language_pipeline() {
   local lang_code="$2"
   local source_lang_code="$3"
 
-  local repo_name="${MODEL_PREFIX}-${lang_code}-SynthDolly-${EPOCH_TAG}-${SEED_TAG}"
+  local repo_name="${MODEL_PREFIX}-${lang_code}-SynthDolly-${RATIO_TAG}-${EPOCH_TAG}-${SEED_TAG}"
   local preft_model_id="${repo_name}-PREFT"
   local full_repo_id="${HF_USER}/${repo_name}"
   local expected_existing_msg="Target Hugging Face repo already exists: ${full_repo_id}. Set allow_existing_hf_repo=true to permit re-training and overwriting."
@@ -423,6 +427,8 @@ run_language_pipeline() {
   "language": "${language}",
   "model_name": "${BASE_MODEL_PATH}",
   "model_id": "${repo_name}",
+  "lora_r": ${LORA_R},
+  "lora_alpha": ${LORA_ALPHA},
   "random_seed": ${SELECTED_SEED},
   "template_name": "${TEMPLATE_NAME}",
   "epoch_tag": "${EPOCH_TAG}",

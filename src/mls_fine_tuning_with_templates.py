@@ -208,6 +208,9 @@ def enforce_existing_repo_policy(full_repo_id: str, hf_token: str, allow_existin
 
 def run_training(config: dict[str, Any]) -> dict[str, Any]:
     epoch_tag = get_optional_config_str(config, "epoch_tag")
+    lora_r = int(config.get("lora_r", 16))
+    lora_alpha = int(config.get("lora_alpha", 32))
+    ratio_tag = f"r{lora_r}alpha{lora_alpha}"
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
     save_local_model = bool(config.get("save_local_model", False))
@@ -246,7 +249,7 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
 
     model = FastModel.get_peft_model(
         model,
-        r=int(config.get("lora_r", 16)),
+        r=lora_r,
         target_modules=config.get(
             "target_modules",
             [
@@ -259,7 +262,7 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
                 "down_proj",
             ],
         ),
-        lora_alpha=int(config.get("lora_alpha", 32)),
+        lora_alpha=lora_alpha,
         lora_dropout=float(config.get("lora_dropout", 0.0)),
         bias=config.get("lora_bias", "none"),
         use_gradient_checkpointing=config.get("use_gradient_checkpointing", "unsloth"),
@@ -389,6 +392,9 @@ def run_training(config: dict[str, Any]) -> dict[str, Any]:
     summary = {
         "model_name": config["model_name"],
         "model_id": append_epoch_tag(str(config["model_id"]), epoch_tag),
+        "lora_r": lora_r,
+        "lora_alpha": lora_alpha,
+        "ratio_tag": ratio_tag,
         "epoch_tag": epoch_tag,
         "language": config["language"],
         "random_seed": int(config["random_seed"]),
