@@ -384,6 +384,50 @@ echo "Using seed tag: ${SEED_TAG}"
   echo "Skip fine-tune if HF exists flag: ${SKIP_FINETUNE_IF_HF_EXISTS}"
   echo "Skip evals if consolidated summary complete flag: ${SKIP_EVAL_IF_SUMMARY_COMPLETE}"
 
+get_eval_summary_state() {
+  local model_finetune="$1"
+  local summary_csv="data/results/compliance_rate_stats.csv"
+
+  if [[ ! -f "${summary_csv}" ]]; then
+    echo "missing"
+    return 0
+  fi
+
+  awk -F"," -v key="${model_finetune}" '
+    NR==1 {
+      for (i = 1; i <= NF; i++) {
+        header[$i] = i
+      }
+      model_col = header["model_finetune"]
+      preft_english_col = header["preft_rate_english"]
+      preft_translated_col = header["preft_rate_translated"]
+      postft_english_col = header["postft_rate_english"]
+      postft_translated_col = header["postft_rate_translated"]
+      next
+    }
+    $model_col == key {
+      found = 1
+      if (
+        $preft_english_col != "" &&
+        $preft_translated_col != "" &&
+        $postft_english_col != "" &&
+        $postft_translated_col != ""
+      ) {
+        print "complete"
+        exit 0
+      }
+
+      print "incomplete"
+      exit 0
+    }
+    END {
+      if (!found) {
+        print "missing"
+      }
+    }
+  ' "${summary_csv}"
+}
+
 run_language_pipeline() {
   local language="$1"
   local lang_code="$2"
@@ -427,7 +471,8 @@ run_language_pipeline() {
   fi
 
   # Step 1: Fine-tuning
-  if run_step "${language}" "[1/5]" "Fine-tuning" "${step_log}" python "${FINETUNE_SCRIPT}" --config <(cat <<JSON
+  if [[ "${skipped_existing_model}" -eq 0 ]]; then
+    if run_step "${language}" "[1/5]" "Fine-tuning" "${step_log}" python "${FINETUNE_SCRIPT}" --config <(cat <<JSON
 {
   "language": "${language}",
   "model_name": "${BASE_MODEL_PATH}",
@@ -451,16 +496,19 @@ run_language_pipeline() {
 }
 JSON
 ); then
-    record_step_result "${language}" "[1/5] Fine-tuning" "SUCCESS" "Completed"
-  else
-    if grep -Fq "${expected_existing_msg}" "${step_log}"; then
-      skipped_existing_model=1
-      record_step_result "${language}" "[1/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Existing HF model reused"
+      record_step_result "${language}" "[1/5] Fine-tuning" "SUCCESS" "Completed"
     else
-      record_step_result "${language}" "[1/5] Fine-tuning" "FAILED" "See ${step_log}"
-      record_hard_failure "${language}" "[1/5] Fine-tuning" "See ${step_log}"
-      language_hard_failure=1
+      if grep -Fq "${expected_existing_msg}" "${step_log}"; then
+        skipped_existing_model=1
+        record_step_result "${language}" "[1/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Existing HF model reused"
+      else
+        record_step_result "${language}" "[1/5] Fine-tuning" "FAILED" "See ${step_log}"
+        record_hard_failure "${language}" "[1/5] Fine-tuning" "See ${step_log}"
+        language_hard_failure=1
+      fi
     fi
+  else
+    record_step_result "${language}" "[1/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Skipped before invoking finetune because the HF repo already exists"
   fi
 
   if [[ "${skipped_existing_model}" -eq 1 ]]; then
@@ -469,7 +517,7 @@ JSON
   fi
 
   # Post-finetune: Organize the uploaded model into HF collections
-  if [[ "${language_hard_failure}" -eq 0 ]]; then
+  if [[ "${language_hard_failure}" -eq 0 && "${skipped_existing_model}" -eq 0 ]]; then
     echo ""
     echo "Organizing uploaded model into HF collection..."
     if python src/organise.py \
@@ -487,35 +535,25 @@ JSON
 
   # Optionally skip all evaluation steps if the consolidated summary already contains complete rates
   if [[ "${SKIP_EVAL_IF_SUMMARY_COMPLETE}" == "true" ]]; then
-    summary_csv="data/results/compliance_rate_stats.csv"
     model_finetune="${repo_name}"
-    if [[ -f "${summary_csv}" ]]; then
-      awk -F"," -v key="$model_finetune" '
-        NR==1{for(i=1;i<=NF;i++)h[$i]=i}
-        NR>1 && $h["model_finetune"]==key {
-          if ($h["preft_rate_english"]!="" && $h["preft_rate_translated"]!="" && $h["postft_rate_english"]!="" && $h["postft_rate_translated"]!="") { exit 0 }
-          else { exit 1 }
-        }
-        END { exit 2 }
-      ' "${summary_csv}"
-      case $? in
-        0)
-          echo "Consolidated summary shows complete entry for ${model_finetune}; skipping evaluation steps."
-          record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
-          record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
-          record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
-          record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
-          record_language_result "${language}" "SKIPPED_EVALS" "Consolidated summary complete; evals skipped via --skip-eval-if-summary-complete"
-          return 0
-          ;;
-        1)
-          echo "Consolidated summary entry for ${model_finetune} found but incomplete; will re-run evaluations."
-          ;;
-        2)
-          echo "No consolidated summary entry found for ${model_finetune}; will run evaluations."
-          ;;
-      esac
-    fi
+    summary_state="$(get_eval_summary_state "${model_finetune}")"
+    case "${summary_state}" in
+      complete)
+        echo "Consolidated summary shows complete entry for ${model_finetune}; skipping evaluation steps."
+        record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+        record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+        record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+        record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+        record_language_result "${language}" "SKIPPED_EVALS" "Consolidated summary complete; evals skipped via --skip-eval-if-summary-complete"
+        return 0
+        ;;
+      incomplete)
+        echo "Consolidated summary entry for ${model_finetune} is incomplete; will re-run evaluations."
+        ;;
+      missing|"")
+        echo "No consolidated summary entry found for ${model_finetune}; will run evaluations."
+        ;;
+    esac
   fi
 
   # Step 2: Post-finetune English eval
