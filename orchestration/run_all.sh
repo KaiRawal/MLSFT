@@ -19,15 +19,20 @@ mkdir -p "${ORCH_RUN_DIR}"
 # Stream the orchestration transcript to both stdout and a run-specific log file.
 exec > >(tee -a "${ORCH_LOG_FILE}") 2>&1
 
-SKIP_IF_EXISTS=false
+SKIP_FINETUNE_IF_HF_EXISTS=false
+SKIP_EVAL_IF_SUMMARY_COMPLETE=false
 while [[ $# -gt 0 ]]; do
 	case "$1" in
-		--skip-if-exists)
-			SKIP_IF_EXISTS=true
+		--skip-finetune-if-hf-exists)
+			SKIP_FINETUNE_IF_HF_EXISTS=true
+			shift
+			;;
+		--skip-eval-if-summary-complete)
+			SKIP_EVAL_IF_SUMMARY_COMPLETE=true
 			shift
 			;;
 		-h|--help)
-			echo "Usage: orchestration/run_all.sh [--skip-if-exists]" >&2
+			echo "Usage: orchestration/run_all.sh [--skip-finetune-if-hf-exists] [--skip-eval-if-summary-complete]" >&2
 			exit 0
 			;;
 		--)
@@ -46,8 +51,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 PIPELINE_ARGS=()
-if [[ "${SKIP_IF_EXISTS}" == "true" ]]; then
-	PIPELINE_ARGS+=(--skip-if-exists)
+if [[ "${SKIP_FINETUNE_IF_HF_EXISTS}" == "true" ]]; then
+	PIPELINE_ARGS+=(--skip-finetune-if-hf-exists)
+fi
+if [[ "${SKIP_EVAL_IF_SUMMARY_COMPLETE}" == "true" ]]; then
+	PIPELINE_ARGS+=(--skip-eval-if-summary-complete)
 fi
 
 SEEDS=(73 3407 9)
@@ -165,7 +173,8 @@ log_line INFO "Orchestration transcript: ${ORCH_LOG_FILE}"
 log_line INFO "Per-seed summaries will be written under: ${ORCH_RUN_DIR}"
 log_line INFO "Master failure report will be written to: ${MASTER_FAILURE_REPORT}"
 log_line INFO "Child pipeline summaries remain under: data/run_summaries/"
-log_line INFO "Skip if exists flag: ${SKIP_IF_EXISTS}"
+log_line INFO "Skip fine-tune if HF exists flag: ${SKIP_FINETUNE_IF_HF_EXISTS}"
+log_line INFO "Skip evals if consolidated summary complete flag: ${SKIP_EVAL_IF_SUMMARY_COMPLETE}"
 
 # Run all models for each seed, then proceed to the next seed
 for seed in "${SEEDS[@]}"; do

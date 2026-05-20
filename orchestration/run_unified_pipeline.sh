@@ -7,7 +7,7 @@ cd "${ROOT_DIR}"
 usage() {
   cat <<'EOF'
 Usage:
-  orchestration/run_unified_pipeline.sh [--skip-if-exists] <model_base> <num_epochs> <seed>
+  orchestration/run_unified_pipeline.sh [--skip-finetune-if-hf-exists] [--skip-eval-if-summary-complete] <model_base> <num_epochs> <seed>
 
 Supported model_base values:
   unsloth/gemma-3-1b-it
@@ -25,7 +25,7 @@ Example:
   orchestration/run_unified_pipeline.sh unsloth/qwen3-4b 3 73
   orchestration/run_unified_pipeline.sh unsloth/Qwen3-8B 1 3407
   orchestration/run_unified_pipeline.sh unsloth/Meta-Llama-3.1-8B-Instruct 5 9
-  orchestration/run_unified_pipeline.sh --skip-if-exists unsloth/qwen3-4b 3 73
+  orchestration/run_unified_pipeline.sh --skip-finetune-if-hf-exists --skip-eval-if-summary-complete unsloth/qwen3-4b 3 73
 
 Notes:
   - num_epochs must be a positive integer
@@ -35,13 +35,18 @@ Notes:
 EOF
 }
 
-SKIP_IF_EXISTS=false
+SKIP_FINETUNE_IF_HF_EXISTS=false
+SKIP_EVAL_IF_SUMMARY_COMPLETE=false
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --skip-if-exists)
-      SKIP_IF_EXISTS=true
+    --skip-finetune-if-hf-exists)
+      SKIP_FINETUNE_IF_HF_EXISTS=true
+      shift
+      ;;
+    --skip-eval-if-summary-complete)
+      SKIP_EVAL_IF_SUMMARY_COMPLETE=true
       shift
       ;;
     -h|--help)
@@ -241,7 +246,8 @@ print_and_save_summary() {
     echo "Epoch tag: ${EPOCH_TAG}"
     echo "Random seed: ${SELECTED_SEED}"
     echo "Seed tag: ${SEED_TAG}"
-    echo "Skip if exists flag: ${SKIP_IF_EXISTS}"
+    echo "Skip fine-tune if HF exists flag: ${SKIP_FINETUNE_IF_HF_EXISTS}"
+    echo "Skip evals if consolidated summary complete flag: ${SKIP_EVAL_IF_SUMMARY_COMPLETE}"
     echo ""
     echo "Language Outcomes"
     echo "${border}"
@@ -373,8 +379,10 @@ echo "Using train epochs: ${NUM_TRAIN_EPOCHS}"
 echo "Using epoch tag: ${EPOCH_TAG}"
 echo "Using random seed: ${SELECTED_SEED}"
 echo "Using seed tag: ${SEED_TAG}"
-echo "Using LoRA ratio tag: ${RATIO_TAG}"
-echo "Pipeline per language: fine-tune -> post-English eval -> post-translated eval -> pre-English eval -> pre-translated eval"
+  echo "Using LoRA ratio tag: ${RATIO_TAG}"
+  echo "Pipeline per language: fine-tune -> post-English eval -> post-translated eval -> pre-English eval -> pre-translated eval"
+  echo "Skip fine-tune if HF exists flag: ${SKIP_FINETUNE_IF_HF_EXISTS}"
+  echo "Skip evals if consolidated summary complete flag: ${SKIP_EVAL_IF_SUMMARY_COMPLETE}"
 
 run_language_pipeline() {
   local language="$1"
@@ -397,21 +405,18 @@ run_language_pipeline() {
   echo ""
   echo "=== ${language} (${lang_code}) -> ${repo_name} ==="
 
-  if [[ "${SKIP_IF_EXISTS}" == "true" ]]; then
+  # If requested, only skip the fine-tune/upload step when the HF repo already exists.
+  if [[ "${SKIP_FINETUNE_IF_HF_EXISTS}" == "true" ]]; then
     if hf_model_exists "${full_repo_id}"; then
-      echo "Skipping all steps because ${full_repo_id} already exists on Hugging Face and --skip-if-exists was set."
+      echo "HF repo exists: ${full_repo_id}; fine-tune/upload will be skipped (flag: --skip-finetune-if-hf-exists)."
       echo "[$(date +"%Y-%m-%d %H:%M:%S")] SKIP existing Hugging Face model detected for ${full_repo_id}" >> "${step_log}"
+      # Mark the fine-tune step as skipped. Do NOT return here — evaluations may still be desired.
       record_step_result "${language}" "[1/5] Fine-tuning" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
-      record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
-      record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
-      record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
-      record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED_EXISTING_MODEL" "Skipped because the model already exists on Hugging Face"
-      record_language_result "${language}" "SKIPPED_EXISTING_MODEL" "Model already exists on Hugging Face; all five steps skipped via --skip-if-exists"
-      return 0
+      skipped_existing_model=1
     else
       check_exit_code=$?
       if [[ "${check_exit_code}" -eq 1 ]]; then
-        echo "Model ${full_repo_id} was not found on Hugging Face; continuing with finetuning."
+        echo "Model ${full_repo_id} was not found on Hugging Face; proceeding with fine-tuning."
       else
         record_step_result "${language}" "[1/5] Fine-tuning" "FAILED" "Unable to verify whether ${full_repo_id} exists on Hugging Face"
         record_hard_failure "${language}" "[1/5] Fine-tuning" "Unable to verify whether ${full_repo_id} exists on Hugging Face"
@@ -459,8 +464,8 @@ JSON
   fi
 
   if [[ "${skipped_existing_model}" -eq 1 ]]; then
-    record_language_result "${language}" "SKIPPED_EXISTING_MODEL" "Fine-tune skipped because model already existed"
-    return 0
+    echo "Fine-tune step was skipped because the HF repo existed; continuing to evaluation steps."
+    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Fine-tune skip detected for ${full_repo_id}; proceeding to evaluations." >> "${step_log}"
   fi
 
   # Post-finetune: Organize the uploaded model into HF collections
@@ -477,6 +482,39 @@ JSON
       echo "Warning: Failed to organize model into collection. Continuing with evaluation..."
       echo "repo_id: ${repo_name}, epoch: ${NUM_TRAIN_EPOCHS}, seed: ${SELECTED_SEED}"
       echo "See ${step_log} for details."
+    fi
+  fi
+
+  # Optionally skip all evaluation steps if the consolidated summary already contains complete rates
+  if [[ "${SKIP_EVAL_IF_SUMMARY_COMPLETE}" == "true" ]]; then
+    summary_csv="data/results/compliance_rate_stats.csv"
+    model_finetune="${repo_name}"
+    if [[ -f "${summary_csv}" ]]; then
+      awk -F"," -v key="$model_finetune" '
+        NR==1{for(i=1;i<=NF;i++)h[$i]=i}
+        NR>1 && $h["model_finetune"]==key {
+          if ($h["preft_rate_english"]!="" && $h["preft_rate_translated"]!="" && $h["postft_rate_english"]!="" && $h["postft_rate_translated"]!="") { exit 0 }
+          else { exit 1 }
+        }
+        END { exit 2 }
+      ' "${summary_csv}"
+      case $? in
+        0)
+          echo "Consolidated summary shows complete entry for ${model_finetune}; skipping evaluation steps."
+          record_step_result "${language}" "[2/5] Post-finetune English eval (HF model)" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+          record_step_result "${language}" "[3/5] Post-finetune translated eval (HF model)" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+          record_step_result "${language}" "[4/5] Pre-finetune English eval" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+          record_step_result "${language}" "[5/5] Pre-finetune translated eval" "SKIPPED_SUMMARY_COMPLETE" "Consolidated summary complete"
+          record_language_result "${language}" "SKIPPED_EVALS" "Consolidated summary complete; evals skipped via --skip-eval-if-summary-complete"
+          return 0
+          ;;
+        1)
+          echo "Consolidated summary entry for ${model_finetune} found but incomplete; will re-run evaluations."
+          ;;
+        2)
+          echo "No consolidated summary entry found for ${model_finetune}; will run evaluations."
+          ;;
+      esac
     fi
   fi
 
