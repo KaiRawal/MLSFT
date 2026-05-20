@@ -348,8 +348,22 @@ def run_pipeline(config: dict[str, Any]) -> tuple[Path, Path, Path, Path, Path, 
     local_question_jsonl = sorry_bench_dir / "data" / "sorry_bench" / "question.jsonl"
     english_question_jsonl = sorry_bench_dir / "data" / "sorry_bench" / "question_en.jsonl"
 
-    to_jsonl_from_prompt_csv(Path(config["local_prompt_csv"]), local_question_jsonl)
-    copy_overwrite_loud(Path(config["english_prompt_jsonl"]), english_question_jsonl, "English question JSONL")
+    # Prepare local and English question JSONL files.
+    # If a local-language CSV is provided and exists, convert it to JSONL.
+    # Otherwise (e.g., English run), reuse the provided English JSONL as the local prompts.
+    local_prompt_csv = Path(config.get("local_prompt_csv", ""))
+    english_prompt_cfg = Path(config.get("english_prompt_jsonl", ""))
+
+    if local_prompt_csv.exists():
+        to_jsonl_from_prompt_csv(local_prompt_csv, local_question_jsonl)
+    else:
+        # No local CSV available (likely the English run); ensure english prompt exists and copy it
+        if not english_prompt_cfg.exists():
+            raise FileNotFoundError(f"Missing required English prompt JSONL: {english_prompt_cfg}")
+        copy_overwrite_loud(english_prompt_cfg, local_question_jsonl, "English question JSONL used as local prompts")
+
+    # Always populate the canonical english_question_jsonl used later in the pipeline
+    copy_overwrite_loud(english_prompt_cfg, english_question_jsonl, "English question JSONL")
 
     answer_path = sorry_bench_dir / "data" / "sorry_bench" / "model_answer" / f"{output_model_id}.jsonl"
     generated_answer_path = (

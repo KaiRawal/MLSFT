@@ -134,10 +134,11 @@ MLSFT/
 - **[MLSFT Small Models (Epoch 5)](https://huggingface.co/collections/kairawal/mlsft-smalllms-e05)** — SynthDolly-finetuned smaller LLM checkpoints after 5 epochs.
 - **[MLSFT Small Models (Epoch 8)](https://huggingface.co/collections/kairawal/mlsft-smalllms-e08)** — SynthDolly-finetuned smaller LLM checkpoints after 8 epochs.
 
-### Languages Included (except English)
+### Languages Included
 
+- English
 - Chinese
-- Danish  
+- Danish
 - Greek
 - Hindi
 - Irish

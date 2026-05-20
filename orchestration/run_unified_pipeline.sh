@@ -634,6 +634,7 @@ JSON
 }
 
 LANGUAGE_RUNS=(
+  "English|EN|eng_Latn"
   "Hindi|HI|hin_Deva"
   "Danish|DA|dan_Latn"
   "Chinese|ZH|zho_Hans"
