@@ -393,39 +393,21 @@ get_eval_summary_state() {
     return 0
   fi
 
-  awk -F"," -v key="${model_finetune}" '
-    NR==1 {
-      for (i = 1; i <= NF; i++) {
-        header[$i] = i
-      }
-      model_col = header["model_finetune"]
-      preft_english_col = header["preft_rate_english"]
-      preft_translated_col = header["preft_rate_translated"]
-      postft_english_col = header["postft_rate_english"]
-      postft_translated_col = header["postft_rate_translated"]
-      next
-    }
-    $model_col == key {
-      found = 1
-      if (
-        $preft_english_col != "" &&
-        $preft_translated_col != "" &&
-        $postft_english_col != "" &&
-        $postft_translated_col != ""
-      ) {
-        print "complete"
-        exit 0
-      }
+  local summary_row=""
+  summary_row="$(awk -F"," -v key="${model_finetune}" 'NR>1 && $1 == key { print; exit }' "${summary_csv}")"
 
-      print "incomplete"
-      exit 0
-    }
-    END {
-      if (!found) {
-        print "missing"
-      }
-    }
-  ' "${summary_csv}"
+  if [[ -z "${summary_row}" ]]; then
+    echo "missing"
+    return 0
+  fi
+
+  IFS=',' read -r _model_finetune preft_rate_english preft_rate_translated postft_rate_english postft_rate_translated <<< "${summary_row}"
+
+  if [[ -n "${preft_rate_english}" && -n "${preft_rate_translated}" && -n "${postft_rate_english}" && -n "${postft_rate_translated}" ]]; then
+    echo "complete"
+  else
+    echo "incomplete"
+  fi
 }
 
 run_language_pipeline() {
